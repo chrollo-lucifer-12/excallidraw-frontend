@@ -23,9 +23,17 @@ import Link from "next/link";
 import { useMutation } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 const SignupPage = () => {
   const router = useRouter();
+  const { getToken } = useLocalStorage();
+  useEffect(() => {
+    if (getToken("user")) {
+      router.push("/dashboard");
+    }
+  }, []);
+
   const signupMutation = useMutation({
     mutationFn: async (data: { email: string; password: string }) => {
       const res = await fetch("http://localhost:8000/api/v1/auth/signup", {
