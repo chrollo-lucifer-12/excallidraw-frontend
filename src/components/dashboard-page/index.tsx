@@ -1,5 +1,5 @@
 "use client";
-import { getWhiteboards } from "@/app/util/data";
+
 import { useLocalStorage } from "@/hooks/use-localstorage";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -13,21 +13,52 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, FileText } from "lucide-react";
 import { useRouter } from "next/navigation";
+import CreateWhiteboard from "./create-whiteboard";
+import axios from "axios";
+import { useEffect, useState } from "react";
 
 const DashboardPage = () => {
   const router = useRouter();
-  const { getToken } = useLocalStorage();
-  const token = getToken("user");
+  const [token, setToken] = useState<string | null>(null);
+
+  // Get token after component mounts on client
+  useEffect(() => {
+    const userToken = localStorage.getItem("user");
+    setToken(userToken);
+  }, []);
 
   const whiteboardQuery = useQuery({
     queryKey: ["whiteboards"],
     queryFn: async () => {
-      const data = await getWhiteboards(token!);
-      return data;
+      console.log("fetching data...");
+      console.log("Using token:", token); // Debug log
+
+      try {
+        const response = await axios.get(
+          "http://localhost:8000/api/v1/user/whiteboards",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+        //  console.log("Response received:", response.data); // This should now log
+        return response.data.whiteboards;
+      } catch (error) {
+        console.error("Error fetching whiteboards:", error);
+        if (axios.isAxiosError(error)) {
+          console.error("Response data:", error.response?.data);
+          console.error("Response status:", error.response?.status);
+        }
+        throw error; // Re-throw to let React Query handle it
+      }
     },
     enabled: !!token,
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
   });
 
+  //console.log(token);
   if (whiteboardQuery.isLoading) {
     return (
       <div className="container mx-auto p-6">
@@ -66,10 +97,7 @@ const DashboardPage = () => {
               Manage and organize your whiteboards
             </p>
           </div>
-          <Button size="lg">
-            <Plus className="mr-2 h-5 w-5" />
-            Create Whiteboard
-          </Button>
+          <CreateWhiteboard />
         </div>
 
         <div className="flex flex-col items-center justify-center min-h-[400px] border-2 border-dashed rounded-lg p-12">
@@ -81,14 +109,13 @@ const DashboardPage = () => {
             Get started by creating your first whiteboard to collaborate and
             brainstorm ideas.
           </p>
-          <Button size="lg">
-            <Plus className="mr-2 h-5 w-5" />
-            Create Your First Whiteboard
-          </Button>
+          <CreateWhiteboard />
         </div>
       </div>
     );
   }
+
+  console.log(whiteboardQuery.data);
 
   return (
     <div className="container mx-auto p-6">
@@ -100,32 +127,25 @@ const DashboardPage = () => {
             {whiteboardQuery.data.length === 1 ? "whiteboard" : "whiteboards"}
           </p>
         </div>
-        <Button size="lg">
-          <Plus className="mr-2 h-5 w-5" />
-          Create Whiteboard
-        </Button>
+        <CreateWhiteboard />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {whiteboardQuery.data.map((whiteboard: any) => (
           <Card
-            key={whiteboard.id}
+            key={whiteboard.slug}
             className="hover:shadow-lg transition-shadow cursor-pointer"
-            onClick={() => router.push(`/whiteboard/${whiteboard.id}`)}
+            onClick={() => router.push(`/whiteboard/${whiteboard.slug}`)}
           >
             <CardHeader>
-              <CardTitle>{whiteboard.name || "Untitled Whiteboard"}</CardTitle>
+              <CardTitle>{whiteboard.Name || "Untitled Whiteboard"}</CardTitle>
               <CardDescription>
                 {whiteboard.createdAt
-                  ? new Date(whiteboard.createdAt).toLocaleDateString()
+                  ? new Date(whiteboard.CreatedAt).toLocaleDateString()
                   : "No date"}
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                {whiteboard.description || "No description available"}
-              </p>
-            </CardContent>
+            <CardContent></CardContent>
           </Card>
         ))}
       </div>

@@ -9,6 +9,6 @@ export const getWhiteboards = async (token: string) => {
       },
     },
   );
-
+  console.log(data, "white");
   return data.data;
 };
