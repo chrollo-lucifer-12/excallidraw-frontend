@@ -214,6 +214,7 @@ export class CanvasDrawer {
 
   public setMode(mode: ShapeMode) {
     this.currentMode = mode;
+    this.draggingShape = null;
     switch (mode) {
       case "rect":
         this.currentShapeClass = Rect;
@@ -272,9 +273,7 @@ export class CanvasDrawer {
     const endX = e.clientX - rect.left;
     const endY = e.clientY - rect.top;
 
-    if (this.draggingShape) {
-      this.draggingShape = null;
-    } else if (this.currentMode !== "freedraw" && this.currentMode !== "none") {
+    if (this.currentMode !== "freedraw" && this.currentMode !== "none") {
       const shape = new this.currentShapeClass(
         this.startX,
         this.startY,

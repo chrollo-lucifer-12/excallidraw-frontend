@@ -1,4 +1,5 @@
 import WhiteboardPage from "@/components/whiteboard-page";
+import axios from "axios";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -14,7 +15,13 @@ const Page = async ({ params }: WhiteboardPageProps) => {
     redirect("/login");
   }
 
-  return <WhiteboardPage slug={slug} />;
+  const data = await axios.get("http://localhost:8000/api/v1/user/me", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  return <WhiteboardPage slug={slug} userId={data.data.user.UserID} />;
 };
 
 export default Page;

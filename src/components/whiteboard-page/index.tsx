@@ -1,12 +1,18 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CanvasDrawer } from "./draw";
 
-const WhiteboardPage = ({ slug }: { slug: string }) => {
+const WhiteboardPage = ({ slug, userId }: { slug: string; userId: any }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawerRef = useRef<CanvasDrawer | null>(null);
+  const [ws, setWs] = useState<WebSocket | null>(null);
 
   useEffect(() => {
+    const ws = new WebSocket(
+      `ws://localhost:8000/ws?roomId=${slug}&userId=${userId}`,
+    );
+    setWs(ws);
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
