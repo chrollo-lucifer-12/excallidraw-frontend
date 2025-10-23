@@ -6,21 +6,10 @@ type FormInputProps = {
   type: "email" | "password" | "text";
   id: string;
   name: string;
-  value: string;
-  onBlur: () => void;
-  onChange: (e: any) => void;
   placeholder: string;
 };
 
-const FormInput = ({
-  id,
-  name,
-  onBlur,
-  onChange,
-  placeholder,
-  type,
-  value,
-}: FormInputProps) => {
+const FormInput = ({ id, name, placeholder, type }: FormInputProps) => {
   const [typeOfInput, setTypeOfInput] = useState(type);
 
   return (
@@ -44,9 +33,6 @@ const FormInput = ({
         type={typeOfInput}
         id={id}
         name={name}
-        value={value}
-        onBlur={onBlur}
-        onChange={onChange}
         placeholder={placeholder}
         className="flex-1 border-none bg-transparent p-0 shadow-none focus-visible:ring-0 focus-visible:outline-none"
       />

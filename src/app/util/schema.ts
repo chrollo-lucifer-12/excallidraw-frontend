@@ -6,3 +6,13 @@ export const formSchema = z.object({
     .string({ error: "Please enter a valid password" })
     .min(8, "Password must be at least 8 characters"),
 });
+export type FormState =
+  | {
+      errors?: {
+        email?: string[];
+        password?: string[];
+      };
+      success: boolean;
+      message?: string;
+    }
+  | undefined;
