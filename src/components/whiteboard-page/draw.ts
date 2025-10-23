@@ -1,5 +1,7 @@
 interface IShape {
   type: ShapeMode;
+  strokeStyle: string;
+  lineWidth: number;
   draw(ctx: CanvasRenderingContext2D): void;
   isInside(x: number, y: number): boolean;
 }
@@ -13,7 +15,10 @@ class Rect implements IShape {
     public startY: number,
     public endX: number,
     public endY: number,
+    public strokeStyle: string,
+    public lineWidth: number,
   ) {}
+
   isInside(x: number, y: number) {
     const minX = Math.min(this.startX, this.endX);
     const maxX = Math.max(this.startX, this.endX);
@@ -21,7 +26,10 @@ class Rect implements IShape {
     const maxY = Math.max(this.startY, this.endY);
     return x >= minX && x <= maxX && y >= minY && y <= maxY;
   }
+
   draw(ctx: CanvasRenderingContext2D) {
+    ctx.strokeStyle = this.strokeStyle;
+    ctx.lineWidth = this.lineWidth;
     ctx.strokeRect(
       this.startX,
       this.startY,
@@ -38,7 +46,10 @@ class Circle implements IShape {
     public startY: number,
     public endX: number,
     public endY: number,
+    public strokeStyle: string,
+    public lineWidth: number,
   ) {}
+
   isInside(x: number, y: number) {
     const radius = Math.sqrt(
       (this.endX - this.startX) ** 2 + (this.endY - this.startY) ** 2,
@@ -47,10 +58,13 @@ class Circle implements IShape {
     const dy = y - this.startY;
     return dx * dx + dy * dy <= radius * radius;
   }
+
   draw(ctx: CanvasRenderingContext2D) {
     const radius = Math.sqrt(
       (this.endX - this.startX) ** 2 + (this.endY - this.startY) ** 2,
     );
+    ctx.strokeStyle = this.strokeStyle;
+    ctx.lineWidth = this.lineWidth;
     ctx.beginPath();
     ctx.arc(this.startX, this.startY, radius, 0, 2 * Math.PI);
     ctx.stroke();
@@ -64,7 +78,10 @@ class Line implements IShape {
     public startY: number,
     public endX: number,
     public endY: number,
+    public strokeStyle: string,
+    public lineWidth: number,
   ) {}
+
   isInside(x: number, y: number) {
     const buffer = 3;
     const dx = this.endX - this.startX;
@@ -78,7 +95,10 @@ class Line implements IShape {
     const dist = Math.sqrt((x - closestX) ** 2 + (y - closestY) ** 2);
     return dist <= buffer;
   }
+
   draw(ctx: CanvasRenderingContext2D) {
+    ctx.strokeStyle = this.strokeStyle;
+    ctx.lineWidth = this.lineWidth;
     ctx.beginPath();
     ctx.moveTo(this.startX, this.startY);
     ctx.lineTo(this.endX, this.endY);
@@ -90,7 +110,12 @@ class FreeDraw implements IShape {
   type: ShapeMode = "freedraw";
   points: { x: number; y: number }[] = [];
 
-  constructor(sx: number, sy: number) {
+  constructor(
+    sx: number,
+    sy: number,
+    public strokeStyle: string,
+    public lineWidth: number,
+  ) {
     this.points.push({ x: sx, y: sy });
   }
 
@@ -118,7 +143,8 @@ class FreeDraw implements IShape {
 
   draw(ctx: CanvasRenderingContext2D) {
     if (this.points.length === 0) return;
-
+    ctx.strokeStyle = this.strokeStyle;
+    ctx.lineWidth = this.lineWidth;
     ctx.beginPath();
     ctx.moveTo(this.points[0].x, this.points[0].y);
     for (let i = 1; i < this.points.length; i++) {
@@ -130,6 +156,8 @@ class FreeDraw implements IShape {
 
 class NullShape implements IShape {
   type: ShapeMode = "none";
+  strokeStyle = "black";
+  lineWidth = 1;
   constructor(_sx: number, _sy: number, _ex: number, _ey: number) {}
   isInside(_x: number, _y: number) {
     return false;
@@ -142,18 +170,24 @@ export class CanvasDrawer {
   private clicked = false;
   private startX = 0;
   private startY = 0;
-  private currentShapeClass: new (
-    sx: number,
-    sy: number,
-    ex: number,
-    ey: number,
-  ) => IShape = Rect;
+  private currentShapeClass:
+    | (new (
+        sx: number,
+        sy: number,
+        ex: number,
+        ey: number,
+        strokeStyle: string,
+        lineWidth: number,
+      ) => IShape)
+    | any = Rect;
   private currentFreeDraw: FreeDraw | null = null;
   private currentMode: ShapeMode = "none";
   private draggingShape: IShape | null = null;
   private dragOffsetX = 0;
   private dragOffsetY = 0;
   private ctx: CanvasRenderingContext2D;
+  private strokeStyle: string = "black";
+  private lineWidth: number = 3;
 
   constructor(private canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext("2d");
@@ -161,6 +195,7 @@ export class CanvasDrawer {
     this.ctx = ctx;
     this.resizeCanvas();
     this.loadShapes();
+
     this.handleMouseDown = this.handleMouseDown.bind(this);
     this.handleMouseUp = this.handleMouseUp.bind(this);
     this.handleMouseMove = this.handleMouseMove.bind(this);
@@ -170,6 +205,11 @@ export class CanvasDrawer {
     canvas.addEventListener("mouseup", this.handleMouseUp);
     canvas.addEventListener("mousemove", this.handleMouseMove);
     window.addEventListener("resize", this.handleResize);
+  }
+
+  public setStyles(strokeStyle: string, lineWidth: number) {
+    this.strokeStyle = strokeStyle;
+    this.lineWidth = lineWidth;
   }
 
   public setMode(mode: ShapeMode) {
@@ -185,7 +225,7 @@ export class CanvasDrawer {
         this.currentShapeClass = Line;
         break;
       case "freedraw":
-        this.currentShapeClass = FreeDraw as any;
+        this.currentShapeClass = FreeDraw;
         break;
       default:
         this.currentShapeClass = NullShape;
@@ -204,7 +244,12 @@ export class CanvasDrawer {
       this.startY = y;
 
       if (this.currentMode === "freedraw") {
-        this.currentFreeDraw = new FreeDraw(this.startX, this.startY);
+        this.currentFreeDraw = new FreeDraw(
+          x,
+          y,
+          this.strokeStyle,
+          this.lineWidth,
+        );
         this.shapes.push(this.currentFreeDraw);
       }
     } else {
@@ -223,19 +268,20 @@ export class CanvasDrawer {
 
   private handleMouseUp(e: MouseEvent) {
     if (!this.clicked) return;
-
     const rect = this.canvas.getBoundingClientRect();
     const endX = e.clientX - rect.left;
     const endY = e.clientY - rect.top;
+
     if (this.draggingShape) {
       this.draggingShape = null;
-    }
-    if (this.currentMode !== "freedraw") {
+    } else if (this.currentMode !== "freedraw" && this.currentMode !== "none") {
       const shape = new this.currentShapeClass(
         this.startX,
         this.startY,
         endX,
         endY,
+        this.strokeStyle,
+        this.lineWidth,
       );
       this.shapes.push(shape);
     }
@@ -248,7 +294,6 @@ export class CanvasDrawer {
 
   private handleMouseMove(e: MouseEvent) {
     if (!this.clicked) return;
-
     const rect = this.canvas.getBoundingClientRect();
     const endX = e.clientX - rect.left;
     const endY = e.clientY - rect.top;
@@ -256,11 +301,10 @@ export class CanvasDrawer {
     if (this.draggingShape) {
       const dx = endX - this.dragOffsetX;
       const dy = endY - this.dragOffsetY;
-
       if (
         this.draggingShape.type === "rect" ||
-        this.draggingShape.type === "line" ||
-        this.draggingShape.type === "circle"
+        this.draggingShape.type === "circle" ||
+        this.draggingShape.type === "line"
       ) {
         (this.draggingShape as any).startX += dx;
         (this.draggingShape as any).startY += dy;
@@ -270,21 +314,21 @@ export class CanvasDrawer {
         const fd = this.draggingShape as FreeDraw;
         fd.points = fd.points.map((p) => ({ x: p.x + dx, y: p.y + dy }));
       }
-
       this.dragOffsetX = endX;
       this.dragOffsetY = endY;
       this.drawShapes();
     } else if (this.currentMode === "freedraw" && this.currentFreeDraw) {
       this.currentFreeDraw.addPoint({ x: endX, y: endY });
       this.drawShapes();
-      this.currentFreeDraw.draw(this.ctx);
-    } else {
+    } else if (this.currentMode !== "none") {
       this.drawShapes();
       const shape = new this.currentShapeClass(
         this.startX,
         this.startY,
         endX,
         endY,
+        this.strokeStyle,
+        this.lineWidth,
       );
       shape.draw(this.ctx);
     }
@@ -298,31 +342,58 @@ export class CanvasDrawer {
   }
 
   private saveShapes() {
-    localStorage.setItem("shapes", JSON.stringify(this.shapes));
+    const serializable = this.shapes.map((s) => ({
+      ...s,
+    }));
+    localStorage.setItem("shapes", JSON.stringify(serializable));
   }
 
   private loadShapes() {
-    const shapesStr = localStorage.getItem("shapes");
-    if (!shapesStr) return;
-
-    const parsed: any[] = JSON.parse(shapesStr);
-    this.shapes = parsed.map((s) => {
+    const data = localStorage.getItem("shapes");
+    if (!data) return;
+    const parsed = JSON.parse(data);
+    this.shapes = parsed.map((s: any) => {
       switch (s.type) {
         case "rect":
-          return new Rect(s.startX, s.startY, s.endX, s.endY);
+          return new Rect(
+            s.startX,
+            s.startY,
+            s.endX,
+            s.endY,
+            s.strokeStyle,
+            s.lineWidth,
+          );
         case "circle":
-          return new Circle(s.startX, s.startY, s.endX, s.endY);
+          return new Circle(
+            s.startX,
+            s.startY,
+            s.endX,
+            s.endY,
+            s.strokeStyle,
+            s.lineWidth,
+          );
         case "line":
-          return new Line(s.startX, s.startY, s.endX, s.endY);
+          return new Line(
+            s.startX,
+            s.startY,
+            s.endX,
+            s.endY,
+            s.strokeStyle,
+            s.lineWidth,
+          );
         case "freedraw":
-          const fd = new FreeDraw(s.points[0].x, s.points[0].y);
+          const fd = new FreeDraw(
+            s.points[0].x,
+            s.points[0].y,
+            s.strokeStyle,
+            s.lineWidth,
+          );
           s.points.slice(1).forEach((p: any) => fd.addPoint(p));
           return fd;
         default:
           return new NullShape(0, 0, 0, 0);
       }
     });
-
     this.drawShapes();
   }
 

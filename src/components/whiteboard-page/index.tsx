@@ -15,7 +15,8 @@ const WhiteboardPage = ({ slug }: { slug: string }) => {
 
     const drawer = new CanvasDrawer(canvas);
     drawerRef.current = drawer;
-    drawer.setMode("none");
+    drawer.setMode("freedraw");
+    drawer.setStyles("green", 2);
 
     const handleResize = () => drawer.resizeCanvas();
     window.addEventListener("resize", handleResize);
