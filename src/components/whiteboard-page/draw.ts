@@ -234,9 +234,9 @@ export class CanvasDrawer {
     this.drawShapes();
   }
 
-  private resizeCanvas() {
-    this.canvas.width = this.canvas.offsetWidth;
-    this.canvas.height = this.canvas.offsetHeight;
+  public resizeCanvas() {
+    this.canvas.width = this.canvas.offsetWidth || window.innerWidth;
+    this.canvas.height = this.canvas.offsetHeight || window.innerHeight;
     this.drawShapes();
   }
 

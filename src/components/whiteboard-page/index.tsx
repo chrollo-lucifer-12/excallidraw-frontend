@@ -9,26 +9,26 @@ const WhiteboardPage = ({ slug }: { slug: string }) => {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
     const drawer = new CanvasDrawer(canvas);
     drawerRef.current = drawer;
-    drawerRef.current.setMode("rect");
-    const resizeCanvas = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
+    drawer.setMode("circle");
 
-    resizeCanvas();
-    window.addEventListener("resize", resizeCanvas);
+    const handleResize = () => drawer.resizeCanvas();
+    window.addEventListener("resize", handleResize);
 
     return () => {
       drawer.destroy();
-      window.removeEventListener("resize", resizeCanvas);
+      window.removeEventListener("resize", handleResize);
     };
   }, []);
 
   return (
     <div className="m-0 p-0">
-      <canvas ref={canvasRef} className="block" />
+      <canvas ref={canvasRef} className="block w-screen h-screen" />
     </div>
   );
 };
