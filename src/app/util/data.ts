@@ -3,7 +3,7 @@ import axios from "axios";
 export const getWhiteboards = async (token: string) => {
   try {
     const data = await axios.get(
-      "http://localhost:8000/api/v1/user/whiteboards",
+      `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/user/whiteboards`,
       {
         headers: {
           Authorization: `Bearer ${token}`,

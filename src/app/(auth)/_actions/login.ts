@@ -21,11 +21,14 @@ export const loginAction = async (state: FormState, formData: FormData) => {
 
     const data = validatedFields.data;
 
-    const res = await fetch("http://localhost:8000/api/v1/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/auth/login`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      },
+    );
 
     const json = await res.json();
 

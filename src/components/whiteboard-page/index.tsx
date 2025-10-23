@@ -9,7 +9,7 @@ const WhiteboardPage = ({ slug, userId }: { slug: string; userId: any }) => {
 
   useEffect(() => {
     const ws = new WebSocket(
-      `ws://localhost:8000/ws?roomId=${slug}&userId=${userId}`,
+      `${process.env.NEXT_PUBLIC_BACKEND_URL}/ws?roomId=${slug}&userId=${userId}`,
     );
     wsRef.current = ws;
 

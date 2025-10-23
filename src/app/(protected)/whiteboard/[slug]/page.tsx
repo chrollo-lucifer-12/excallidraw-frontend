@@ -15,11 +15,14 @@ const Page = async ({ params }: WhiteboardPageProps) => {
     redirect("/login");
   }
 
-  const data = await axios.get("http://localhost:8000/api/v1/user/me", {
-    headers: {
-      Authorization: `Bearer ${token}`,
+  const data = await axios.get(
+    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/user/me`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     },
-  });
+  );
 
   return <WhiteboardPage slug={slug} userId={data.data.user.UserID} />;
 };
