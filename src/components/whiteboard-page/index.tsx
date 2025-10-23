@@ -11,7 +11,7 @@ const WhiteboardPage = ({ slug }: { slug: string }) => {
     if (!canvas) return;
     const drawer = new CanvasDrawer(canvas);
     drawerRef.current = drawer;
-    drawerRef.current.setMode("line");
+    drawerRef.current.setMode("freedraw");
     const resizeCanvas = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
