@@ -1,72 +1,153 @@
-interface Shape {
-  type: "rect";
-  startX: number;
-  startY: number;
-  width: number;
-  height: number;
+interface IShape {
+  draw(ctx: CanvasRenderingContext2D): void;
 }
 
-export function initDraw(canvas: HTMLCanvasElement) {
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-  let shapes: Shape[] = [];
-  let clicked = false;
-  let startX = -1;
-  let startY = -1;
+type ShapeMode = "rect" | "circle" | "line" | "none";
 
-  const handleMouseDown = (e: MouseEvent) => {
-    clicked = true;
-    const rect = canvas.getBoundingClientRect();
-    startX = e.clientX - rect.left;
-    startY = e.clientY - rect.top;
-  };
+class Rect implements IShape {
+  constructor(
+    public startX: number,
+    public startY: number,
+    public endX: number,
+    public endY: number,
+  ) {}
 
-  const handleMouseUp = (e: MouseEvent) => {
-    if (clicked) {
-      const rect = canvas.getBoundingClientRect();
-      const currentX = e.clientX - rect.left;
-      const currentY = e.clientY - rect.top;
-      const width = currentX - startX;
-      const height = currentY - startY;
-      shapes.push({
-        startX: startX,
-        startY: startY,
-        width,
-        height,
-        type: "rect",
-      });
-      clicked = false;
-      startX = -1;
-      startY = -1;
+  draw(ctx: CanvasRenderingContext2D) {
+    const width = this.endX - this.startX;
+    const height = this.endY - this.startY;
+    ctx.strokeRect(this.startX, this.startY, width, height);
+  }
+}
+
+class Circle implements IShape {
+  constructor(
+    public startX: number,
+    public startY: number,
+    public endX: number,
+    public endY: number,
+  ) {}
+
+  draw(ctx: CanvasRenderingContext2D) {
+    ctx.beginPath();
+    const radius = Math.sqrt(
+      (this.endX - this.startX) * (this.endX - this.startX) +
+        (this.endY - this.startY) * (this.endY - this.startY),
+    );
+    ctx.arc(this.startX, this.startY, radius, 0, 2 * Math.PI);
+    ctx.stroke();
+  }
+}
+
+class NullShape implements IShape {
+  constructor(_sx: number, _sy: number, _ex: number, _ey: number) {}
+  draw(_ctx: CanvasRenderingContext2D) {}
+}
+
+export class CanvasDrawer {
+  private shapes: IShape[] = [];
+  private clicked = false;
+  private startX = -1;
+  private startY = -1;
+  private currentShapeClass: new (
+    sx: number,
+    sy: number,
+    ex: number,
+    ey: number,
+  ) => IShape = Rect;
+
+  constructor(private canvas: HTMLCanvasElement) {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas context not found");
+    this.ctx = ctx;
+
+    this.handleMouseDown = this.handleMouseDown.bind(this);
+    this.handleMouseUp = this.handleMouseUp.bind(this);
+    this.handleMouseMove = this.handleMouseMove.bind(this);
+
+    canvas.addEventListener("mousedown", this.handleMouseDown);
+    canvas.addEventListener("mouseup", this.handleMouseUp);
+    canvas.addEventListener("mousemove", this.handleMouseMove);
+  }
+
+  public setMode(mode: ShapeMode) {
+    switch (mode) {
+      case "rect":
+        this.currentShapeClass = Rect;
+        break;
+      case "circle":
+        this.currentShapeClass = Circle;
+        break;
+      default:
+        this.currentShapeClass = NullShape;
+        break;
     }
-  };
+  }
 
-  const drawShapes = () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (const shape of shapes) {
-      ctx.strokeRect(shape.startX, shape.startY, shape.width, shape.height);
+  private ctx: CanvasRenderingContext2D;
+
+  public setShapeClass(
+    shapeClass: new (sx: number, sy: number, ex: number, ey: number) => IShape,
+  ) {
+    this.currentShapeClass = shapeClass;
+  }
+
+  private handleMouseDown(e: MouseEvent) {
+    this.clicked = true;
+    const rect = this.canvas.getBoundingClientRect();
+    this.startX = e.clientX - rect.left;
+    this.startY = e.clientY - rect.top;
+  }
+
+  private handleMouseUp(e: MouseEvent) {
+    if (!this.clicked) return;
+
+    const rect = this.canvas.getBoundingClientRect();
+    const endX = e.clientX - rect.left;
+    const endY = e.clientY - rect.top;
+
+    const shape = new this.currentShapeClass(
+      this.startX,
+      this.startY,
+      endX,
+      endY,
+    );
+    this.shapes.push(shape);
+
+    this.clicked = false;
+    this.startX = -1;
+    this.startY = -1;
+
+    this.drawShapes();
+  }
+
+  private handleMouseMove(e: MouseEvent) {
+    if (!this.clicked) return;
+
+    const rect = this.canvas.getBoundingClientRect();
+    const endX = e.clientX - rect.left;
+    const endY = e.clientY - rect.top;
+
+    this.drawShapes();
+
+    const shape = new this.currentShapeClass(
+      this.startX,
+      this.startY,
+      endX,
+      endY,
+    );
+    shape.draw(this.ctx);
+  }
+
+  private drawShapes() {
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    for (const shape of this.shapes) {
+      shape.draw(this.ctx);
     }
-  };
+  }
 
-  const handleMouseMove = (e: MouseEvent) => {
-    if (clicked && startX != -1 && startY != -1) {
-      const rect = canvas.getBoundingClientRect();
-      const currentX = e.clientX - rect.left;
-      const currentY = e.clientY - rect.top;
-      const width = currentX - startX;
-      const height = currentY - startY;
-      drawShapes();
-      ctx.strokeRect(startX, startY, width, height);
-    }
-  };
-
-  canvas.addEventListener("mousedown", handleMouseDown);
-  canvas.addEventListener("mouseup", handleMouseUp);
-  canvas.addEventListener("mousemove", handleMouseMove);
-
-  return () => {
-    canvas.removeEventListener("mousedown", handleMouseDown);
-    canvas.removeEventListener("mouseup", handleMouseUp);
-    canvas.removeEventListener("mousemove", handleMouseMove);
-  };
+  destroy() {
+    this.canvas.removeEventListener("mousedown", this.handleMouseDown);
+    this.canvas.removeEventListener("mouseup", this.handleMouseUp);
+    this.canvas.removeEventListener("mousemove", this.handleMouseMove);
+  }
 }
