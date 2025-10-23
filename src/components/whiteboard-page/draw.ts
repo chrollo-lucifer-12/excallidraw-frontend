@@ -189,7 +189,10 @@ export class CanvasDrawer {
   private strokeStyle: string = "black";
   private lineWidth: number = 3;
 
-  constructor(private canvas: HTMLCanvasElement) {
+  constructor(
+    private canvas: HTMLCanvasElement,
+    private ws: WebSocket,
+  ) {
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Canvas context not found");
     this.ctx = ctx;
@@ -205,6 +208,68 @@ export class CanvasDrawer {
     canvas.addEventListener("mouseup", this.handleMouseUp);
     canvas.addEventListener("mousemove", this.handleMouseMove);
     window.addEventListener("resize", this.handleResize);
+
+    const serializable = this.shapes.map((s) => ({
+      ...s,
+    }));
+
+    this.ws.onopen = (e) => {
+      this.ws.send(
+        JSON.stringify({
+          type: "shapes",
+          shapes: serializable,
+        }),
+      );
+    };
+
+    this.ws.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      if (data.type === "shapes") {
+        this.shapes = data.shapes.map((s: any) => {
+          switch (s.type) {
+            case "rect":
+              return new Rect(
+                s.startX,
+                s.startY,
+                s.endX,
+                s.endY,
+                s.strokeStyle,
+                s.lineWidth,
+              );
+            case "circle":
+              return new Circle(
+                s.startX,
+                s.startY,
+                s.endX,
+                s.endY,
+                s.strokeStyle,
+                s.lineWidth,
+              );
+            case "line":
+              return new Line(
+                s.startX,
+                s.startY,
+                s.endX,
+                s.endY,
+                s.strokeStyle,
+                s.lineWidth,
+              );
+            case "freedraw":
+              const fd = new FreeDraw(
+                s.points[0].x,
+                s.points[0].y,
+                s.strokeStyle,
+                s.lineWidth,
+              );
+              s.points.slice(1).forEach((p: any) => fd.addPoint(p));
+              return fd;
+            default:
+              return new NullShape(0, 0, 0, 0);
+          }
+        });
+        this.drawShapes();
+      }
+    };
   }
 
   public setStyles(strokeStyle: string, lineWidth: number) {
@@ -345,6 +410,14 @@ export class CanvasDrawer {
       ...s,
     }));
     localStorage.setItem("shapes", JSON.stringify(serializable));
+    if (this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(
+        JSON.stringify({
+          type: "shapes",
+          shapes: serializable,
+        }),
+      );
+    }
   }
 
   private loadShapes() {
