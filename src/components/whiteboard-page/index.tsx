@@ -1,5 +1,6 @@
 "use client";
 import { useLayoutEffect, useRef } from "react";
+import { initDraw } from "./draw";
 
 const WhiteboardPage = ({ slug }: { slug: string }) => {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -13,8 +14,9 @@ const WhiteboardPage = ({ slug }: { slug: string }) => {
       canvas.height = window.innerHeight;
     };
 
-    resizeCanvas();
+    initDraw(canvas);
 
+    resizeCanvas();
     window.addEventListener("resize", resizeCanvas);
     return () => {
       window.removeEventListener("resize", resizeCanvas);
