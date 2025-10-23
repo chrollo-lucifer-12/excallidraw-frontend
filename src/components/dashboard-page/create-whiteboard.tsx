@@ -18,12 +18,10 @@ import axios from "axios";
 import { toast } from "sonner"; // or any toast library you use
 import { useLocalStorage } from "@/hooks/use-localstorage";
 
-const CreateWhiteboard = () => {
+const CreateWhiteboard = ({ token }: { token: string }) => {
   const queryClient = useQueryClient();
   const [whiteboardName, setWhiteboardName] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  const { getToken } = useLocalStorage();
-  const token = getToken("user");
 
   const createWhiteboardMutation = useMutation({
     mutationKey: ["create-whiteboard"],
@@ -41,8 +39,8 @@ const CreateWhiteboard = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["whiteboards"] }); // refresh whiteboards
-      setWhiteboardName(""); // reset input
-      setIsOpen(false); // close dialog
+      setWhiteboardName("");
+      setIsOpen(false);
       toast.success("Whiteboard created successfully!");
     },
     onError: (error: any) => {
@@ -87,14 +85,6 @@ const CreateWhiteboard = () => {
           {createWhiteboardMutation.isPending ? "Creating..." : "Create"}
         </Button>
       </DialogContent>
-      {/*<DialogFooter>
-        <Button
-          onClick={handleCreate}
-          disabled={createWhiteboardMutation.isPending}
-        >
-          {createWhiteboardMutation.isPending ? "Creating..." : "Create"}
-        </Button>
-      </DialogFooter>*/}
     </Dialog>
   );
 };

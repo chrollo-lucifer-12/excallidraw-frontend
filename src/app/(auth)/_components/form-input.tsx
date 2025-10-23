@@ -13,7 +13,7 @@ const FormInput = ({ id, name, placeholder, type }: FormInputProps) => {
   const [typeOfInput, setTypeOfInput] = useState(type);
 
   return (
-    <div className="flex items-center gap-2 rounded-md border border-input bg-background px-2 hover:border- focus-within:ring-2 focus-within:ring-gray-400 hover:border-gray-400 hover:border-1 transition duration-300">
+    <div className="flex items-center gap-2 rounded-md border border-input bg-background px-2 hover:border- focus-within:ring-2 focus-within:ring-gray-400 hover:border-gray-400 hover:border transition duration-300">
       {typeOfInput === "email" ? (
         <Mail size={16} className="text-muted-foreground" />
       ) : typeOfInput === "password" ? (
