@@ -38,6 +38,22 @@ class Circle implements IShape {
   }
 }
 
+class Line implements IShape {
+  constructor(
+    public startX: number,
+    public startY: number,
+    public endX: number,
+    public endY: number,
+  ) {}
+
+  draw(ctx: CanvasRenderingContext2D) {
+    ctx.beginPath();
+    ctx.moveTo(this.startX, this.startY);
+    ctx.lineTo(this.endX, this.endY);
+    ctx.stroke();
+  }
+}
+
 class NullShape implements IShape {
   constructor(_sx: number, _sy: number, _ex: number, _ey: number) {}
   draw(_ctx: CanvasRenderingContext2D) {}
@@ -76,6 +92,9 @@ export class CanvasDrawer {
         break;
       case "circle":
         this.currentShapeClass = Circle;
+        break;
+      case "line":
+        this.currentShapeClass = Line;
         break;
       default:
         this.currentShapeClass = NullShape;
