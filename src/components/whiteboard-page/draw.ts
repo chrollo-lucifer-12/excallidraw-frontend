@@ -501,8 +501,8 @@ export class CanvasDrawer {
   private dragOffsetX = 0;
   private dragOffsetY = 0;
   private ctx: CanvasRenderingContext2D;
-  private strokeStyle: string = "black";
-  private lineWidth: number = 3;
+  public strokeStyle: string = "black";
+  public lineWidth: number = 3;
   private selectedTextBox: Text | null = null;
   private shapesToEraser: number[] = [];
   private eraserSize: number = 10;
@@ -742,7 +742,7 @@ export class CanvasDrawer {
       this.shapes.push(shape);
     }
 
-    //  this.this.saveShapes();
+    this.saveShapes();
     this.clicked = false;
     this.currentFreeDraw = null;
     this.drawShapes();
@@ -834,28 +834,21 @@ export class CanvasDrawer {
     const serializable = this.shapes.map((s) => {
       if (s.type === "text") {
         const t = s as Text;
-        return {
-          ...t,
-          text: t.text,
-        };
+        return { ...t, text: t.text };
+      } else if (s.type === "freedraw") {
+        const fd = s as FreeDraw;
+        return { ...fd, points: fd.points };
       }
       return { ...s };
     });
 
     localStorage.setItem("shapes", JSON.stringify(serializable));
-    if (this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(
-        JSON.stringify({
-          type: "shapes",
-          shapes: serializable,
-        }),
-      );
-    }
   }
 
   private loadShapes() {
     const data = localStorage.getItem("shapes");
     if (!data) return;
+
     const parsed = JSON.parse(data);
     this.shapes = parsed.map((s: any) => {
       switch (s.type) {
