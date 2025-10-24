@@ -7,6 +7,7 @@ interface IShape {
 }
 
 type ShapeMode =
+  | "parallelogram"
   | "polygon"
   | "hexagon"
   | "pentagon"
@@ -432,6 +433,52 @@ class NullShape implements IShape {
   draw(_ctx: CanvasRenderingContext2D) {}
 }
 
+class Parallelogram implements IShape {
+  type: ShapeMode = "parallelogram";
+  constructor(
+    public startX: number,
+    public startY: number,
+    public endX: number,
+    public endY: number,
+    public strokeStyle: string,
+    public lineWidth: number,
+  ) {}
+
+  isInside(x: number, y: number) {
+    const minX = Math.min(this.startX, this.endX);
+    const maxX = Math.max(this.startX, this.endX);
+    const minY = Math.min(this.startY, this.endY);
+    const maxY = Math.max(this.startY, this.endY);
+    return x >= minX && x <= maxX && y >= minY && y <= maxY;
+  }
+
+  draw(ctx: CanvasRenderingContext2D) {
+    ctx.strokeStyle = this.strokeStyle;
+    ctx.lineWidth = this.lineWidth;
+
+    const width = this.endX - this.startX;
+    const height = this.endY - this.startY;
+    const skew = width * 0.3;
+
+    const topLeftX = this.startX;
+    const topLeftY = this.startY;
+    const topRightX = this.startX + width + skew;
+    const topRightY = this.startY;
+    const bottomRightX = this.startX + width;
+    const bottomRightY = this.startY + height;
+    const bottomLeftX = this.startX - skew;
+    const bottomLeftY = this.startY + height;
+
+    ctx.beginPath();
+    ctx.moveTo(topLeftX, topLeftY);
+    ctx.lineTo(topRightX, topRightY);
+    ctx.lineTo(bottomRightX, bottomRightY);
+    ctx.lineTo(bottomLeftX, bottomLeftY);
+    ctx.closePath();
+    ctx.stroke();
+  }
+}
+
 export class CanvasDrawer {
   private shapes: IShape[] = [];
   private clicked = false;
@@ -603,6 +650,9 @@ export class CanvasDrawer {
           }
         };
         break;
+      case "parallelogram":
+        this.currentShapeClass = Parallelogram;
+        break;
       default:
         this.currentShapeClass = NullShape;
         break;
@@ -702,7 +752,10 @@ export class CanvasDrawer {
         this.draggingShape.type === "arrow" ||
         this.draggingShape.type === "text" ||
         this.draggingShape.type === "ellipse" ||
-        this.draggingShape.type === "triangle"
+        this.draggingShape.type === "triangle" ||
+        this.draggingShape.type === "pentagon" ||
+        this.draggingShape.type === "hexagon" ||
+        this.draggingShape.type === "parallelogram"
       ) {
         (this.draggingShape as any).startX += dx;
         (this.draggingShape as any).startY += dy;
@@ -860,6 +913,15 @@ export class CanvasDrawer {
         case "hexagon":
           return new Polygon(
             6,
+            s.startX,
+            s.startY,
+            s.endX,
+            s.endY,
+            s.strokeStyle,
+            s.lineWidth,
+          );
+        case "parallelogram":
+          return new Parallelogram(
             s.startX,
             s.startY,
             s.endX,
