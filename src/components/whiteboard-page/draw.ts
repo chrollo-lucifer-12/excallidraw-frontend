@@ -7,6 +7,7 @@ interface IShape {
 }
 
 type ShapeMode =
+  | "triangle"
   | "ellipse"
   | "text"
   | "arrow"
@@ -308,6 +309,69 @@ class FreeDraw implements IShape {
   }
 }
 
+class Triangle implements IShape {
+  type: ShapeMode = "triangle";
+
+  constructor(
+    public startX: number,
+    public startY: number,
+    public endX: number,
+    public endY: number,
+    public strokeStyle: string,
+    public lineWidth: number,
+  ) {}
+
+  isInside(x: number, y: number) {
+    const topX = this.startX;
+    const topY = this.startY;
+    const bottomRightX = this.endX;
+    const bottomRightY = this.endY;
+    const bottomLeftX = this.startX - (bottomRightX - this.startX);
+    const bottomLeftY = bottomRightY;
+    const area = (
+      p1x: number,
+      p1y: number,
+      p2x: number,
+      p2y: number,
+      p3x: number,
+      p3y: number,
+    ) =>
+      Math.abs((p1x * (p2y - p3y) + p2x * (p3y - p1y) + p3x * (p1y - p2y)) / 2);
+
+    const A = area(
+      topX,
+      topY,
+      bottomRightX,
+      bottomRightY,
+      bottomLeftX,
+      bottomLeftY,
+    );
+    const A1 = area(x, y, bottomRightX, bottomRightY, bottomLeftX, bottomLeftY);
+    const A2 = area(topX, topY, x, y, bottomLeftX, bottomLeftY);
+    const A3 = area(topX, topY, bottomRightX, bottomRightY, x, y);
+
+    return Math.abs(A - (A1 + A2 + A3)) < 0.1;
+  }
+
+  draw(ctx: CanvasRenderingContext2D) {
+    ctx.strokeStyle = this.strokeStyle;
+    ctx.lineWidth = this.lineWidth;
+    const topX = this.startX;
+    const topY = this.startY;
+    const bottomRightX = this.endX;
+    const bottomRightY = this.endY;
+    const bottomLeftX = this.startX - (bottomRightX - this.startX);
+    const bottomLeftY = bottomRightY;
+
+    ctx.beginPath();
+    ctx.moveTo(topX, topY);
+    ctx.lineTo(bottomRightX, bottomRightY);
+    ctx.lineTo(bottomLeftX, bottomLeftY);
+    ctx.closePath();
+    ctx.stroke();
+  }
+}
+
 class NullShape implements IShape {
   type: ShapeMode = "none";
   strokeStyle = "black";
@@ -459,6 +523,9 @@ export class CanvasDrawer {
       case "ellipse":
         this.currentShapeClass = Ellipse;
         break;
+      case "triangle":
+        this.currentShapeClass = Triangle;
+        break;
       default:
         this.currentShapeClass = NullShape;
         break;
@@ -557,7 +624,8 @@ export class CanvasDrawer {
         this.draggingShape.type === "line" ||
         this.draggingShape.type === "arrow" ||
         this.draggingShape.type === "text" ||
-        this.draggingShape.type === "ellipse"
+        this.draggingShape.type === "ellipse" ||
+        this.draggingShape.type === "triangle"
       ) {
         (this.draggingShape as any).startX += dx;
         (this.draggingShape as any).startY += dy;
@@ -686,6 +754,15 @@ export class CanvasDrawer {
           return t;
         case "ellipse":
           return new Ellipse(
+            s.startX,
+            s.startY,
+            s.endX,
+            s.endY,
+            s.strokeStyle,
+            s.lineWidth,
+          );
+        case "triangle":
+          return new Triangle(
             s.startX,
             s.startY,
             s.endX,
