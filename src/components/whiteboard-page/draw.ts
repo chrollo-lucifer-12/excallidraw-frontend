@@ -6,7 +6,74 @@ interface IShape {
   isInside(x: number, y: number): boolean;
 }
 
-type ShapeMode = "arrow" | "freedraw" | "rect" | "circle" | "line" | "none";
+type ShapeMode =
+  | "text"
+  | "arrow"
+  | "freedraw"
+  | "rect"
+  | "circle"
+  | "line"
+  | "none";
+
+class Text implements IShape {
+  type: ShapeMode = "text";
+  text: string = "";
+  constructor(
+    public startX: number,
+    public startY: number,
+    public endX: number,
+    public endY: number,
+    public strokeStyle: string,
+    public lineWidth: number,
+  ) {}
+
+  isInside(x: number, y: number) {
+    const minX = Math.min(this.startX, this.endX);
+    const maxX = Math.max(this.startX, this.endX);
+    const minY = Math.min(this.startY, this.endY);
+    const maxY = Math.max(this.startY, this.endY);
+    return x >= minX && x <= maxX && y >= minY && y <= maxY;
+  }
+
+  draw(ctx: CanvasRenderingContext2D) {
+    ctx.strokeStyle = this.strokeStyle;
+    ctx.lineWidth = this.lineWidth;
+    ctx.strokeRect(
+      this.startX,
+      this.startY,
+      this.endX - this.startX,
+      this.endY - this.startY,
+    );
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(
+      this.startX + 1,
+      this.startY + 1,
+      this.endX - this.startX - 2,
+      this.endY - this.startY - 2,
+    );
+    ctx.clip();
+
+    ctx.textBaseline = "top";
+    ctx.fillStyle = this.strokeStyle;
+    const lineHeight = 16;
+    const words = this.text.split("\n");
+    for (let i = 0; i < words.length; i++) {
+      ctx.fillText(words[i], this.startX + 4, this.startY + 4 + i * lineHeight);
+    }
+
+    ctx.restore();
+  }
+
+  addChar(char: string) {
+    this.text += char;
+  }
+
+  removeChar() {
+    this.text = this.text.slice(0, -1);
+  }
+}
 
 class Rect implements IShape {
   type: ShapeMode = "rect";
@@ -242,6 +309,7 @@ export class CanvasDrawer {
   private ctx: CanvasRenderingContext2D;
   private strokeStyle: string = "black";
   private lineWidth: number = 3;
+  private selectedTextBox: Text | null = null;
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -257,11 +325,13 @@ export class CanvasDrawer {
     this.handleMouseUp = this.handleMouseUp.bind(this);
     this.handleMouseMove = this.handleMouseMove.bind(this);
     this.handleResize = this.handleResize.bind(this);
+    this.handleKeyDown = this.handleKeyDown.bind(this);
 
     canvas.addEventListener("mousedown", this.handleMouseDown);
     canvas.addEventListener("mouseup", this.handleMouseUp);
     canvas.addEventListener("mousemove", this.handleMouseMove);
     window.addEventListener("resize", this.handleResize);
+    window.addEventListener("keydown", this.handleKeyDown);
 
     const serializable = this.shapes.map((s) => ({
       ...s,
@@ -350,6 +420,9 @@ export class CanvasDrawer {
       case "arrow":
         this.currentShapeClass = Arrow;
         break;
+      case "text":
+        this.currentShapeClass = Text;
+        break;
       default:
         this.currentShapeClass = NullShape;
         break;
@@ -360,6 +433,23 @@ export class CanvasDrawer {
     const rect = this.canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+
+    if (this.currentMode == "text") {
+      const textBox = new Text(
+        x,
+        y,
+        x + 150,
+        y + 30,
+        this.strokeStyle,
+        this.lineWidth,
+      );
+      this.shapes.push(textBox);
+      this.selectedTextBox = textBox;
+      this.currentMode = "none";
+      this.drawShapes();
+      this.saveShapes();
+      return;
+    }
 
     if (this.currentMode !== "none") {
       this.clicked = true;
@@ -383,6 +473,9 @@ export class CanvasDrawer {
           this.dragOffsetX = x;
           this.dragOffsetY = y;
           this.clicked = true;
+          if (shape.type === "text") {
+            this.selectedTextBox = shape as Text;
+          }
           break;
         }
       }
@@ -425,7 +518,9 @@ export class CanvasDrawer {
       if (
         this.draggingShape.type === "rect" ||
         this.draggingShape.type === "circle" ||
-        this.draggingShape.type === "line"
+        this.draggingShape.type === "line" ||
+        this.draggingShape.type === "arrow" ||
+        this.draggingShape.type === "text"
       ) {
         (this.draggingShape as any).startX += dx;
         (this.draggingShape as any).startY += dy;
@@ -434,6 +529,11 @@ export class CanvasDrawer {
       } else if (this.draggingShape.type === "freedraw") {
         const fd = this.draggingShape as FreeDraw;
         fd.points = fd.points.map((p) => ({ x: p.x + dx, y: p.y + dy }));
+      } else if (this.selectedTextBox) {
+        (this.selectedTextBox as any).startX += dx;
+        (this.selectedTextBox as any).startY += dy;
+        (this.selectedTextBox as any).endX += dx;
+        (this.selectedTextBox as any).endY += dy;
       }
       this.dragOffsetX = endX;
       this.dragOffsetY = endY;
@@ -463,9 +563,17 @@ export class CanvasDrawer {
   }
 
   private saveShapes() {
-    const serializable = this.shapes.map((s) => ({
-      ...s,
-    }));
+    const serializable = this.shapes.map((s) => {
+      if (s.type === "text") {
+        const t = s as Text;
+        return {
+          ...t,
+          text: t.text,
+        };
+      }
+      return { ...s };
+    });
+
     localStorage.setItem("shapes", JSON.stringify(serializable));
     if (this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(
@@ -528,6 +636,17 @@ export class CanvasDrawer {
             s.strokeStyle,
             s.lineWidth,
           );
+        case "text":
+          const t = new Text(
+            s.startX,
+            s.startY,
+            s.endX,
+            s.endY,
+            s.strokeStyle,
+            s.lineWidth,
+          );
+          t.text = s.text;
+          return t;
         default:
           return new NullShape(0, 0, 0, 0);
       }
@@ -545,10 +664,23 @@ export class CanvasDrawer {
     this.resizeCanvas();
   }
 
+  private handleKeyDown(e: KeyboardEvent) {
+    if (!this.selectedTextBox) return;
+    if (e.key === "Backspace") {
+      this.selectedTextBox.removeChar();
+      this.drawShapes();
+    } else if (e.key.length === 1) {
+      this.selectedTextBox.addChar(e.key);
+      this.drawShapes();
+    }
+    this.saveShapes();
+  }
+
   destroy() {
     this.canvas.removeEventListener("mousedown", this.handleMouseDown);
     this.canvas.removeEventListener("mouseup", this.handleMouseUp);
     this.canvas.removeEventListener("mousemove", this.handleMouseMove);
     window.removeEventListener("resize", this.handleResize);
+    window.removeEventListener("keydown", this.handleKeyDown);
   }
 }
