@@ -516,7 +516,7 @@ export class CanvasDrawer {
     this.ctx = ctx;
     this.resizeCanvas();
     this.loadShapes();
-
+    this.canvas.style.cursor = "pointer";
     this.handleMouseDown = this.handleMouseDown.bind(this);
     this.handleMouseUp = this.handleMouseUp.bind(this);
     this.handleMouseMove = this.handleMouseMove.bind(this);
@@ -599,6 +599,14 @@ export class CanvasDrawer {
 
   public setMode(mode: ShapeMode) {
     this.currentMode = mode;
+    this.shapesToEraser = [];
+    if (this.currentMode === "none") {
+      this.canvas.style.cursor = "pointer";
+    } else if (this.currentMode === "eraser") {
+      this.canvas.style.cursor = "url(/eraser-cursor.png), auto";
+    } else {
+      this.canvas.style.cursor = "crosshair";
+    }
     this.draggingShape = null;
     switch (mode) {
       case "rect":

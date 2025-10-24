@@ -34,7 +34,7 @@ const WhiteboardPage = ({ slug, userId }: { slug: string; userId: any }) => {
     const drawer = new CanvasDrawer(canvas, ws);
     drawerRef.current = drawer;
 
-    drawer.setMode("eraser");
+    drawer.setMode("line");
     drawer.setStyles("green", 2);
 
     const handleResize = () => drawer.resizeCanvas();
