@@ -7,6 +7,7 @@ interface IShape {
 }
 
 type ShapeMode =
+  | "eraser"
   | "parallelogram"
   | "polygon"
   | "hexagon"
@@ -503,6 +504,8 @@ export class CanvasDrawer {
   private strokeStyle: string = "black";
   private lineWidth: number = 3;
   private selectedTextBox: Text | null = null;
+  private shapesToEraser: number[] = [];
+  private eraserSize: number = 10;
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -653,6 +656,7 @@ export class CanvasDrawer {
       case "parallelogram":
         this.currentShapeClass = Parallelogram;
         break;
+
       default:
         this.currentShapeClass = NullShape;
         break;
@@ -730,7 +734,7 @@ export class CanvasDrawer {
       this.shapes.push(shape);
     }
 
-    this.saveShapes();
+    //  this.this.saveShapes();
     this.clicked = false;
     this.currentFreeDraw = null;
     this.drawShapes();
@@ -742,7 +746,7 @@ export class CanvasDrawer {
     const endX = e.clientX - rect.left;
     const endY = e.clientY - rect.top;
 
-    if (this.draggingShape) {
+    if (this.draggingShape && this.currentMode != "eraser") {
       const dx = endX - this.dragOffsetX;
       const dy = endY - this.dragOffsetY;
       if (
@@ -776,7 +780,7 @@ export class CanvasDrawer {
     } else if (this.currentMode === "freedraw" && this.currentFreeDraw) {
       this.currentFreeDraw.addPoint({ x: endX, y: endY });
       this.drawShapes();
-    } else if (this.currentMode !== "none") {
+    } else if (this.currentMode !== "none" && this.currentMode !== "eraser") {
       this.drawShapes();
       const shape = new this.currentShapeClass(
         this.startX,
@@ -787,6 +791,27 @@ export class CanvasDrawer {
         this.lineWidth,
       );
       shape.draw(this.ctx);
+    } else if (this.currentMode === "eraser") {
+      for (let i = this.shapes.length - 1; i >= 0; i--) {
+        const shape = this.shapes[i];
+        const ex = e.clientX - this.canvas.getBoundingClientRect().left;
+        const ey = e.clientY - this.canvas.getBoundingClientRect().top;
+
+        const inEraser =
+          shape.isInside(ex, ey) ||
+          (shape.type === "freedraw" &&
+            (shape as FreeDraw).points.some(
+              (p) =>
+                Math.abs(p.x - ex) <= this.eraserSize &&
+                Math.abs(p.y - ey) <= this.eraserSize,
+            ));
+
+        if (inEraser) {
+          this.shapes.splice(i, 1);
+        }
+      }
+      this.drawShapes();
+      this.saveShapes();
     }
   }
 
