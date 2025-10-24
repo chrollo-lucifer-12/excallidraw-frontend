@@ -7,6 +7,7 @@ interface IShape {
 }
 
 type ShapeMode =
+  | "ellipse"
   | "text"
   | "arrow"
   | "freedraw"
@@ -134,6 +135,38 @@ class Circle implements IShape {
     ctx.lineWidth = this.lineWidth;
     ctx.beginPath();
     ctx.arc(this.startX, this.startY, radius, 0, 2 * Math.PI);
+    ctx.stroke();
+  }
+}
+
+class Ellipse implements IShape {
+  type: ShapeMode = "ellipse";
+  constructor(
+    public startX: number,
+    public startY: number,
+    public endX: number,
+    public endY: number,
+    public strokeStyle: string,
+    public lineWidth: number,
+  ) {}
+
+  isInside(x: number, y: number) {
+    const rx = (this.endX - this.startX) / 2;
+    const ry = (this.endY - this.startY) / 2;
+    const cx = this.startX + rx;
+    const cy = this.startY + ry;
+    return (x - cx) ** 2 / rx ** 2 + (y - cy) ** 2 / ry ** 2 <= 1;
+  }
+
+  draw(ctx: CanvasRenderingContext2D) {
+    const rx = (this.endX - this.startX) / 2;
+    const ry = (this.endY - this.startY) / 2;
+    const cx = this.startX + rx;
+    const cy = this.startY + ry;
+    ctx.strokeStyle = this.strokeStyle;
+    ctx.lineWidth = this.lineWidth;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, Math.abs(rx), Math.abs(ry), 0, 0, 2 * Math.PI);
     ctx.stroke();
   }
 }
@@ -423,6 +456,9 @@ export class CanvasDrawer {
       case "text":
         this.currentShapeClass = Text;
         break;
+      case "ellipse":
+        this.currentShapeClass = Ellipse;
+        break;
       default:
         this.currentShapeClass = NullShape;
         break;
@@ -520,7 +556,8 @@ export class CanvasDrawer {
         this.draggingShape.type === "circle" ||
         this.draggingShape.type === "line" ||
         this.draggingShape.type === "arrow" ||
-        this.draggingShape.type === "text"
+        this.draggingShape.type === "text" ||
+        this.draggingShape.type === "ellipse"
       ) {
         (this.draggingShape as any).startX += dx;
         (this.draggingShape as any).startY += dy;
@@ -647,6 +684,15 @@ export class CanvasDrawer {
           );
           t.text = s.text;
           return t;
+        case "ellipse":
+          return new Ellipse(
+            s.startX,
+            s.startY,
+            s.endX,
+            s.endY,
+            s.strokeStyle,
+            s.lineWidth,
+          );
         default:
           return new NullShape(0, 0, 0, 0);
       }
