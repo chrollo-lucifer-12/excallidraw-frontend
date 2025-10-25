@@ -511,6 +511,8 @@ export class CanvasDrawer {
   private panStartX = 0;
   private panStartY = 0;
   private isPanning: boolean = false;
+  private zoomX = 1;
+  private zoomY = 1;
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -601,6 +603,12 @@ export class CanvasDrawer {
     }
   }
 
+  public setZoom(x: number, y: number) {
+    this.zoomX = x;
+    this.zoomY = y;
+    this.drawShapes();
+  }
+
   public setStyles(strokeStyle: string, lineWidth: number) {
     this.strokeStyle = strokeStyle;
     this.lineWidth = lineWidth;
@@ -682,8 +690,8 @@ export class CanvasDrawer {
 
   private handleMouseDown(e: MouseEvent) {
     const rect = this.canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left - this.panX;
-    const y = e.clientY - rect.top - this.panY;
+    const x = (e.clientX - rect.left - this.panX) / this.zoomX;
+    const y = (e.clientY - rect.top - this.panY) / this.zoomY;
 
     if (e.button == 1) {
       this.isPanning = true;
@@ -743,8 +751,8 @@ export class CanvasDrawer {
 
   private handleMouseUp(e: MouseEvent) {
     const rect = this.canvas.getBoundingClientRect();
-    const endX = e.clientX - rect.left - this.panX;
-    const endY = e.clientY - rect.top - this.panY;
+    const endX = (e.clientX - rect.left - this.panX) / this.zoomX;
+    const endY = (e.clientY - rect.top - this.panY) / this.zoomY;
 
     if (this.isPanning) {
       this.isPanning = false;
@@ -772,8 +780,8 @@ export class CanvasDrawer {
 
   private handleMouseMove(e: MouseEvent) {
     const rect = this.canvas.getBoundingClientRect();
-    const endX = e.clientX - rect.left - this.panX;
-    const endY = e.clientY - rect.top - this.panY;
+    const rawX = (e.clientX - rect.left - this.panX) / this.zoomX;
+    const rawY = (e.clientY - rect.top - this.panY) / this.zoomY;
 
     if (this.isPanning) {
       this.panX = e.clientX - this.panStartX;
@@ -784,9 +792,10 @@ export class CanvasDrawer {
 
     if (!this.clicked) return;
 
-    if (this.draggingShape && this.currentMode != "eraser") {
-      const dx = endX - this.dragOffsetX;
-      const dy = endY - this.dragOffsetY;
+    if (this.draggingShape && this.currentMode !== "eraser") {
+      const dx = rawX - this.dragOffsetX;
+      const dy = rawY - this.dragOffsetY;
+
       if (
         this.draggingShape.type === "rect" ||
         this.draggingShape.type === "circle" ||
@@ -806,39 +815,46 @@ export class CanvasDrawer {
       } else if (this.draggingShape.type === "freedraw") {
         const fd = this.draggingShape as FreeDraw;
         fd.points = fd.points.map((p) => ({ x: p.x + dx, y: p.y + dy }));
-      } else if (this.selectedTextBox) {
-        (this.selectedTextBox as any).startX += dx;
-        (this.selectedTextBox as any).startY += dy;
-        (this.selectedTextBox as any).endX += dx;
-        (this.selectedTextBox as any).endY += dy;
       }
-      this.dragOffsetX = endX;
-      this.dragOffsetY = endY;
+
+      this.dragOffsetX = rawX;
+      this.dragOffsetY = rawY;
       this.drawShapes();
-    } else if (this.currentMode === "freedraw" && this.currentFreeDraw) {
-      this.currentFreeDraw.addPoint({ x: endX, y: endY });
+      return;
+    }
+
+    if (this.currentMode === "freedraw" && this.currentFreeDraw) {
+      this.currentFreeDraw.addPoint({ x: rawX, y: rawY });
       this.drawShapes();
-    } else if (this.currentMode !== "none" && this.currentMode !== "eraser") {
+      return;
+    }
+
+    if (this.currentMode !== "none" && this.currentMode !== "eraser") {
       this.drawShapes();
+
       this.ctx.save();
       this.ctx.translate(this.panX, this.panY);
-      const shape = new this.currentShapeClass(
+      this.ctx.scale(this.zoomX, this.zoomY);
+
+      const previewShape = new this.currentShapeClass(
         this.startX,
         this.startY,
-        endX,
-        endY,
+        rawX,
+        rawY,
         this.strokeStyle,
         this.lineWidth,
       );
-      shape.draw(this.ctx);
+      previewShape.draw(this.ctx);
+
       this.ctx.restore();
-    } else if (this.currentMode === "eraser") {
+      return;
+    }
+    if (this.currentMode === "eraser") {
       for (let i = this.shapes.length - 1; i >= 0; i--) {
         const shape = this.shapes[i];
-        const ex =
-          e.clientX - this.canvas.getBoundingClientRect().left - this.panX;
-        const ey =
-          e.clientY - this.canvas.getBoundingClientRect().top - this.panY;
+
+        const ex = rawX;
+        const ey = rawY;
 
         const inEraser =
           shape.isInside(ex, ey) ||
@@ -862,6 +878,7 @@ export class CanvasDrawer {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.ctx.save();
     this.ctx.translate(this.panX, this.panY);
+    this.ctx.scale(this.zoomX, this.zoomY);
     for (const shape of this.shapes) {
       shape.draw(this.ctx);
     }
@@ -1012,6 +1029,33 @@ export class CanvasDrawer {
   }
 
   private handleKeyDown(e: KeyboardEvent) {
+    if (e.key === "+") {
+      const centerX = this.canvas.width / 2 - this.panX;
+      const centerY = this.canvas.height / 2 - this.panY;
+      const zoomFactor = 1.2;
+
+      this.zoomX *= zoomFactor;
+      this.zoomY *= zoomFactor;
+
+      this.panX -= centerX * (zoomFactor - 1);
+      this.panY -= centerY * (zoomFactor - 1);
+
+      this.drawShapes();
+      return;
+    }
+    if (e.key === "-") {
+      const centerX = this.canvas.width / 2 - this.panX;
+      const centerY = this.canvas.height / 2 - this.panY;
+      const zoomFactor = 1 / 1.2;
+
+      this.zoomX *= zoomFactor;
+      this.zoomY *= zoomFactor;
+
+      this.panX -= centerX * (zoomFactor - 1);
+      this.panY -= centerY * (zoomFactor - 1);
+      this.drawShapes();
+      return;
+    }
     if (!this.selectedTextBox) return;
     if (e.key === "Backspace") {
       this.selectedTextBox.removeChar();
