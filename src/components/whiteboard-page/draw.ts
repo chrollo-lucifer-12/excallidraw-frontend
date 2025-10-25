@@ -79,7 +79,7 @@ export class CanvasDrawer {
   private zoomY = 1;
 
   constructor(
-    private canvas: HTMLCanvasElement,
+    public canvas: HTMLCanvasElement,
     private ws: WebSocket | null,
   ) {
     const ctx = canvas.getContext("2d");
