@@ -19,9 +19,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { CanvasDrawer } from "./draw";
+import { CanvasDrawer, IShape } from "./draw";
 import { Input } from "../ui/input";
-
+import { Slider } from "@/components/ui/slider";
 const shapeItems = [
   { title: "Eraser", url: "#", icon: Edit, name: "eraser" },
   { title: "Parallelogram", url: "#", icon: Square, name: "parallelogram" },
@@ -39,33 +39,64 @@ const shapeItems = [
   { title: "None", url: "#", icon: Edit, name: "none" },
 ];
 
-export function AppSidebar({ canvasObject }: { canvasObject: CanvasDrawer }) {
+export function AppSidebar({
+  canvasObject,
+  selectedShape,
+}: {
+  canvasObject: CanvasDrawer;
+  selectedShape: IShape | null;
+}) {
   return (
     <Sidebar variant="floating" className="h-auto">
       <SidebarContent className="h-auto p-2">
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-sm">Shapes</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu className="space-y-1">
-              {shapeItems.map((item) => (
-                <SidebarMenuItem key={item.title} className="p-1">
-                  <SidebarMenuButton asChild>
-                    <button
-                      key={item.name}
-                      className="flex items-center gap-2 text-sm w-full text-left hover:bg-gray-100 rounded px-1 py-1"
-                      onClick={() => canvasObject?.setMode(item.name)}
-                    >
-                      <item.icon className="w-4 h-4" />
-                      <span>{item.title}</span>
-                    </button>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {!selectedShape ? (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-sm">Shapes</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="space-y-1">
+                {shapeItems.map((item) => (
+                  <SidebarMenuItem key={item.title} className="p-1">
+                    <SidebarMenuButton asChild>
+                      <button
+                        key={item.name}
+                        className="flex items-center gap-2 text-sm w-full text-left hover:bg-gray-100 rounded px-1 py-1"
+                        onClick={() => canvasObject?.setMode(item.name)}
+                      >
+                        <item.icon className="w-4 h-4" />
+                        <span>{item.title}</span>
+                      </button>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : (
+          <SidebarGroup>
+            <Input
+              type="color"
+              value={selectedShape.strokeStyle}
+              onChange={(e) => {
+                selectedShape.strokeStyle = e.target.value;
+                canvasObject.saveShapes();
+                canvasObject.drawShapes();
+              }}
+            />
+            <Input
+              type="range"
+              min={1}
+              max={5}
+              value={selectedShape.lineWidth}
+              onChange={(e) => {
+                selectedShape.lineWidth = parseInt(e.target.value);
+                canvasObject.saveShapes();
+                canvasObject.drawShapes();
+              }}
+            />
+          </SidebarGroup>
+        )}
       </SidebarContent>
-      {canvasObject && (
+      {canvasObject && !selectedShape && (
         <SidebarFooter>
           <Input
             type="color"
@@ -73,6 +104,15 @@ export function AppSidebar({ canvasObject }: { canvasObject: CanvasDrawer }) {
             onChange={(e) => {
               canvasObject.setStyles(e.target.value, canvasObject.lineWidth);
             }}
+          />
+          <Slider
+            defaultValue={[canvasObject.lineWidth]}
+            value={[canvasObject.lineWidth]}
+            onValueChange={(e) => {
+              canvasObject.setStyles(canvasObject.strokeStyle, e[0]);
+            }}
+            max={10}
+            step={1}
           />
           <Input
             type="range"

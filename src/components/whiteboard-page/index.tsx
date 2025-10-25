@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { CanvasDrawer } from "./draw";
+import { CanvasDrawer, IShape } from "./draw";
 import { AppSidebar } from "./app-sidebar";
 
 const WhiteboardPage = ({
@@ -14,6 +14,7 @@ const WhiteboardPage = ({
   const drawerRef = useRef<CanvasDrawer | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const minimapRef = useRef<HTMLCanvasElement>(null);
+  const [selectedShape, setSelectedShape] = useState<IShape | null>(null);
 
   // Track when drawer is ready
   const [drawerReady, setDrawerReady] = useState<CanvasDrawer | null>(null);
@@ -82,13 +83,23 @@ const WhiteboardPage = ({
     };
   }, [slug, userId]);
 
+  useEffect(() => {
+    if (!drawerReady) return;
+
+    drawerReady.onSelectShapeChanged = setSelectedShape;
+
+    return () => {
+      drawerReady.onSelectShapeChanged = undefined;
+    };
+  }, [drawerReady]);
+
   return (
     <div className="relative m-0 p-0">
       <div className="absolute bottom-4 right-4 border border-gray-300 z-2  rounded-md bg-white/90">
         <canvas ref={minimapRef} width={200} height={150} className="block" />
       </div>
       <div className="absolute top-4 left-4 z-50">
-        <AppSidebar canvasObject={drawerReady!} />
+        <AppSidebar canvasObject={drawerReady!} selectedShape={selectedShape} />
       </div>
       <canvas ref={canvasRef} className="block w-screen h-screen" />
     </div>

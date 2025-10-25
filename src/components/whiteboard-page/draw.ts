@@ -77,6 +77,8 @@ export class CanvasDrawer {
   private isPanning: boolean = false;
   private zoomX = 1;
   private zoomY = 1;
+  public selectShape: IShape | null = null;
+  public onSelectShapeChanged?: (shape: IShape | null) => void;
 
   constructor(
     public canvas: HTMLCanvasElement,
@@ -94,6 +96,7 @@ export class CanvasDrawer {
     this.handleResize = this.handleResize.bind(this);
     this.handleWheel = this.handleWheel.bind(this);
     this.handleKeyDown = this.handleKeyDown.bind(this);
+    this.selectShape = null;
 
     canvas.addEventListener("mousedown", this.handleMouseDown);
     canvas.addEventListener("mouseup", this.handleMouseUp);
@@ -167,6 +170,29 @@ export class CanvasDrawer {
     }
   }
 
+  public setSelectShape(shape: IShape | null) {
+    this.selectShape = shape;
+    if (this.onSelectShapeChanged) {
+      this.onSelectShapeChanged(shape);
+    }
+  }
+
+  public setLineWidth(w: number) {
+    if (this.selectShape) {
+      this.selectShape.lineWidth = w;
+      this.saveShapes();
+      this.drawShapes();
+    }
+  }
+
+  public setStrokeStyle(color: string) {
+    if (this.selectShape) {
+      this.selectShape.strokeStyle = color;
+      this.saveShapes();
+      this.drawShapes();
+    }
+  }
+
   public setZoom(x: number, y: number) {
     this.zoomX = x;
     this.zoomY = y;
@@ -181,6 +207,8 @@ export class CanvasDrawer {
   public setMode(mode: ShapeMode) {
     this.currentMode = mode;
     this.shapesToEraser = [];
+    this.setSelectShape(null);
+
     if (this.currentMode === "none") {
       this.canvas.style.cursor = "pointer";
     } else if (this.currentMode === "eraser") {
@@ -301,6 +329,9 @@ export class CanvasDrawer {
         const shape = this.shapes[i];
         if (shape.isInside(x, y)) {
           this.draggingShape = shape;
+          this.setSelectShape(shape);
+
+          console.log(shape);
           this.dragOffsetX = x;
           this.dragOffsetY = y;
           this.clicked = true;
@@ -438,7 +469,7 @@ export class CanvasDrawer {
     }
   }
 
-  private drawShapes() {
+  public drawShapes() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.ctx.save();
     this.ctx.translate(this.panX, this.panY);
@@ -449,7 +480,7 @@ export class CanvasDrawer {
     this.ctx.restore();
   }
 
-  private saveShapes() {
+  public saveShapes() {
     const serializable = this.shapes.map((s) => {
       if (s.type === "text") {
         const t = s as Text;
