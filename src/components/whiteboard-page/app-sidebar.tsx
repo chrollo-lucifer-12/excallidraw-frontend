@@ -33,7 +33,7 @@ const shapeItems = [
   { title: "Text", url: "#", icon: Edit, name: "text" },
   { title: "Arrow", url: "#", icon: ArrowRight, name: "arrow" },
   { title: "Free Draw", url: "#", icon: Edit, name: "freedraw" },
-  { title: "Rectangle", url: "#", icon: Square, name: "rectangle" },
+  { title: "Rectangle", url: "#", icon: Square, name: "rect" },
   { title: "Circle", url: "#", icon: Circle, name: "circle" },
   { title: "Line", url: "#", icon: ArrowRight, name: "line" },
   { title: "None", url: "#", icon: Edit, name: "none" },
@@ -65,22 +65,29 @@ export function AppSidebar({ canvasObject }: { canvasObject: CanvasDrawer }) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
-        <Input
-          type="color"
-          onChange={(e) => {
-            canvasObject.setStyles(e.target.value, canvasObject.lineWidth);
-          }}
-        />
-        <Input
-          type="range"
-          min={1}
-          max={5}
-          onChange={(e) => {
-            canvasObject.setStyles(canvasObject.strokeStyle, e.target.value);
-          }}
-        />
-      </SidebarFooter>
+      {canvasObject && (
+        <SidebarFooter>
+          <Input
+            type="color"
+            value={canvasObject.strokeStyle}
+            onChange={(e) => {
+              canvasObject.setStyles(e.target.value, canvasObject.lineWidth);
+            }}
+          />
+          <Input
+            type="range"
+            min={1}
+            max={5}
+            value={canvasObject.lineWidth}
+            onChange={(e) => {
+              canvasObject.setStyles(
+                canvasObject.strokeStyle,
+                parseInt(e.target.value),
+              );
+            }}
+          />
+        </SidebarFooter>
+      )}
     </Sidebar>
   );
 }

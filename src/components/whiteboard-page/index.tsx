@@ -3,7 +3,13 @@ import { useEffect, useRef, useState } from "react";
 import { CanvasDrawer } from "./draw";
 import { AppSidebar } from "./app-sidebar";
 
-const WhiteboardPage = ({ slug, userId }: { slug: string; userId: any }) => {
+const WhiteboardPage = ({
+  slug,
+  userId,
+}: {
+  slug: string | null;
+  userId: any | null;
+}) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawerRef = useRef<CanvasDrawer | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -12,19 +18,22 @@ const WhiteboardPage = ({ slug, userId }: { slug: string; userId: any }) => {
   const [drawerReady, setDrawerReady] = useState<CanvasDrawer | null>(null);
 
   useEffect(() => {
-    const ws = new WebSocket(
-      `${process.env.NEXT_PUBLIC_BACKEND_URL}/ws?roomId=${slug}&userId=${userId}`,
-    );
-    wsRef.current = ws;
+    let ws: WebSocket | null = null;
+    if (slug && userId) {
+      ws = new WebSocket(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/ws?roomId=${slug}&userId=${userId}`,
+      );
+      wsRef.current = ws;
 
-    ws.onopen = () => {
-      console.log("WebSocket connected");
-      ws.send(JSON.stringify({ type: "test", message: "hello" }));
-    };
+      ws.onopen = () => {
+        console.log("WebSocket connected");
+        ws?.send(JSON.stringify({ type: "test", message: "hello" }));
+      };
 
-    ws.onerror = (error) => console.error("WebSocket Error:", error);
-    ws.onclose = (event) =>
-      console.log("Connection closed:", event.code, event.reason);
+      ws.onerror = (error) => console.error("WebSocket Error:", error);
+      ws.onclose = (event) =>
+        console.log("Connection closed:", event.code, event.reason);
+    }
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -42,17 +51,17 @@ const WhiteboardPage = ({ slug, userId }: { slug: string; userId: any }) => {
     return () => {
       drawer.destroy();
       window.removeEventListener("resize", handleResize);
-      ws.close();
+      ws?.close();
     };
   }, [slug, userId]);
 
+  console.log(drawerReady);
+
   return (
     <div className="relative m-0 p-0">
-      {/* Sidebar floating over canvas */}
       <div className="absolute top-4 left-4 z-50">
         <AppSidebar canvasObject={drawerReady!} />
       </div>
-
       <canvas ref={canvasRef} className="block w-screen h-screen" />
     </div>
   );
