@@ -22,6 +22,7 @@ import {
 import { CanvasDrawer, IShape } from "./draw";
 import { Input } from "../ui/input";
 import { Slider } from "@/components/ui/slider";
+import { useState } from "react";
 const shapeItems = [
   { title: "Eraser", url: "#", icon: Edit, name: "eraser" },
   { title: "Parallelogram", url: "#", icon: Square, name: "parallelogram" },
@@ -46,6 +47,19 @@ export function AppSidebar({
   canvasObject: CanvasDrawer;
   selectedShape: IShape | null;
 }) {
+  const [selectedShapeColor, setSelectedShapeColor] = useState<string>(
+    selectedShape?.strokeStyle!,
+  );
+  const [selectedShapeWidth, setSelectedShapeWidth] = useState<number>(
+    selectedShape?.lineWidth!,
+  );
+  const [globalShapeColor, setGlobalShapeColor] = useState<string>(
+    canvasObject?.strokeStyle,
+  );
+  const [globalShapeWidth, setGlobalShapeWidth] = useState<number>(
+    canvasObject?.lineWidth,
+  );
+
   return (
     <Sidebar variant="floating" className="h-auto">
       <SidebarContent className="h-auto p-2">
@@ -75,8 +89,10 @@ export function AppSidebar({
           <SidebarGroup>
             <Input
               type="color"
-              value={selectedShape.strokeStyle}
+              value={selectedShapeColor}
               onChange={(e) => {
+                console.log(e.target.value);
+                setSelectedShapeColor(e.target.value);
                 selectedShape.strokeStyle = e.target.value;
                 canvasObject.saveShapes();
                 canvasObject.drawShapes();
@@ -86,8 +102,9 @@ export function AppSidebar({
               type="range"
               min={1}
               max={5}
-              value={selectedShape.lineWidth}
+              value={selectedShapeWidth}
               onChange={(e) => {
+                setSelectedShapeWidth(parseInt(e.target.value));
                 selectedShape.lineWidth = parseInt(e.target.value);
                 canvasObject.saveShapes();
                 canvasObject.drawShapes();
@@ -100,26 +117,19 @@ export function AppSidebar({
         <SidebarFooter>
           <Input
             type="color"
-            value={canvasObject.strokeStyle}
+            value={globalShapeColor}
             onChange={(e) => {
+              setGlobalShapeColor(e.target.value);
               canvasObject.setStyles(e.target.value, canvasObject.lineWidth);
             }}
-          />
-          <Slider
-            defaultValue={[canvasObject.lineWidth]}
-            value={[canvasObject.lineWidth]}
-            onValueChange={(e) => {
-              canvasObject.setStyles(canvasObject.strokeStyle, e[0]);
-            }}
-            max={10}
-            step={1}
           />
           <Input
             type="range"
             min={1}
             max={5}
-            value={canvasObject.lineWidth}
+            value={globalShapeWidth}
             onChange={(e) => {
+              setGlobalShapeWidth(parseInt(e.target.value));
               canvasObject.setStyles(
                 canvasObject.strokeStyle,
                 parseInt(e.target.value),
