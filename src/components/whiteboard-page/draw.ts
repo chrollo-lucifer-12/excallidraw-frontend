@@ -84,6 +84,9 @@ export class CanvasDrawer {
   public selectShape: IShape | null = null;
   public onSelectShapeChanged?: (shape: IShape | null) => void;
   private awsIcon: string | null = null;
+  private readonly handleSize = 8; // px
+  private readonly handleColor = "#3b82f6";
+
   constructor(
     public canvas: HTMLCanvasElement,
     private ws: WebSocket | null,
@@ -284,6 +287,80 @@ export class CanvasDrawer {
         break;
     }
   }
+
+  private drawSelectionBox(shape: IShape) {
+    const ctx = this.ctx;
+
+    if (
+      "startX" in shape &&
+      "startY" in shape &&
+      "endX" in shape &&
+      "endY" in shape
+    ) {
+      const minX = Math.min((shape as any).startX, (shape as any).endX);
+      const minY = Math.min((shape as any).startY, (shape as any).endY);
+      const w = Math.abs((shape as any).endX - (shape as any).startX);
+      const h = Math.abs((shape as any).endY - (shape as any).startY);
+
+      ctx.save();
+      ctx.strokeStyle = "#3b82f6";
+      ctx.lineWidth = 1 / this.zoomX;
+      ctx.setLineDash([6, 6]);
+      ctx.strokeRect(minX, minY, w, h);
+      ctx.restore();
+      return;
+    }
+
+    if (shape.type === "freedraw") {
+      const fd = shape as any;
+      const xs = fd.points.map((p: any) => p.x);
+      const ys = fd.points.map((p: any) => p.y);
+      const minX = Math.min(...xs);
+      const minY = Math.min(...ys);
+      const w = Math.max(...xs) - minX;
+      const h = Math.max(...ys) - minY;
+
+      ctx.save();
+      ctx.strokeStyle = "#3b82f6";
+      ctx.lineWidth = 1 / this.zoomX;
+      ctx.setLineDash([6, 6]);
+      ctx.strokeRect(minX, minY, w, h);
+      ctx.restore();
+    }
+  }
+
+  private getSelectionHandles(shape: IShape) {
+    const PAD = 6 / this.zoomX;
+    const size = this.handleSize / this.zoomX;
+
+    let minX, minY, width, height;
+
+    if ("startX" in shape) {
+      minX = Math.min(shape.startX, shape.endX) - PAD;
+      minY = Math.min(shape.startY, shape.endY) - PAD;
+      width = Math.abs(shape.endX - shape.startX) + PAD * 2;
+      height = Math.abs(shape.endY - shape.startY) + PAD * 2;
+    } else {
+      return [];
+    }
+
+    const x2 = minX + width;
+    const y2 = minY + height;
+    const cx = minX + width / 2;
+    const cy = minY + height / 2;
+
+    return [
+      { x: minX, y: minY, cursor: "nwse-resize", corner: "tl" },
+      { x: cx, y: minY, cursor: "ns-resize", corner: "tm" },
+      { x: x2, y: minY, cursor: "nesw-resize", corner: "tr" },
+      { x: minX, y: cy, cursor: "ew-resize", corner: "ml" },
+      { x: x2, y: cy, cursor: "ew-resize", corner: "mr" },
+      { x: minX, y: y2, cursor: "nesw-resize", corner: "bl" },
+      { x: cx, y: y2, cursor: "ns-resize", corner: "bm" },
+      { x: x2, y: y2, cursor: "nwse-resize", corner: "br" },
+    ].map((h) => ({ ...h, size }));
+  }
+
   private handleMouseDown(e: MouseEvent) {
     const rect = this.canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left - this.panX) / this.zoomX;
@@ -451,6 +528,20 @@ export class CanvasDrawer {
       this.saveShapes();
     }
   }
+  private drawResizeHandles(shape: IShape) {
+    const ctx = this.ctx;
+    const handles = this.getSelectionHandles(shape);
+
+    ctx.save();
+    ctx.fillStyle = this.handleColor;
+
+    handles.forEach((h) => {
+      ctx.fillRect(h.x - h.size / 2, h.y - h.size / 2, h.size, h.size);
+    });
+
+    ctx.restore();
+  }
+
   public drawShapes() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.ctx.save();
@@ -458,6 +549,10 @@ export class CanvasDrawer {
     this.ctx.scale(this.zoomX, this.zoomY);
     for (const shape of this.shapes) {
       shape.draw(this.ctx);
+    }
+    if (this.selectShape) {
+      this.drawSelectionBox(this.selectShape);
+      this.drawResizeHandles(this.selectShape);
     }
     this.ctx.restore();
   }
