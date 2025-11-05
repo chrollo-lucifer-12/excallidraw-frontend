@@ -44,7 +44,7 @@ const WhiteboardPage = ({
     drawerRef.current = drawer;
     setDrawerReady(drawer); // mark drawer ready
 
-    drawer.setMode("none");
+    drawer.setMode("icon");
     drawer.setStyles("green", 2);
 
     const handleResize = () => drawer.resizeCanvas();

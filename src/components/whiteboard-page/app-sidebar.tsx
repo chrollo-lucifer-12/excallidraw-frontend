@@ -6,6 +6,7 @@ import {
   Star,
   ArrowRight,
   Edit,
+  Amphora,
 } from "lucide-react";
 
 import {
@@ -20,8 +21,15 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { CanvasDrawer, IShape, ShapeMode } from "./draw";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Input } from "../ui/input";
 import { useState } from "react";
+import { Button } from "../ui/button";
+import Image from "next/image";
 const shapeItems = [
   { title: "Eraser", url: "#", icon: Edit, name: "eraser" },
   { title: "Parallelogram", url: "#", icon: Square, name: "parallelogram" },
@@ -37,6 +45,20 @@ const shapeItems = [
   { title: "Circle", url: "#", icon: Circle, name: "circle" },
   { title: "Line", url: "#", icon: ArrowRight, name: "line" },
   { title: "None", url: "#", icon: Edit, name: "none" },
+];
+
+const icons = [
+  { name: "./icons/api-gateway.svg" },
+  { name: "./icons/cloudfront.svg" },
+  { name: "./icons/dee-learning-containers.svg" },
+  { name: "./icons/documentdb.svg" },
+  { name: "./icons/dynamodb.svg" },
+  { name: "./icons/ec2.svg" },
+  { name: "./icons/elastic-transcoder.svg" },
+  { name: "./icons/lambda.svg" },
+  { name: "./icons/s3.svg" },
+  { name: "./icons/sns.svg" },
+  { name: "./icons/sqs.svg" },
 ];
 
 export function AppSidebar({
@@ -83,6 +105,30 @@ export function AppSidebar({
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
+              </SidebarMenu>
+              <SidebarMenu className="space-y-1">
+                <Popover>
+                  <PopoverTrigger>Open</PopoverTrigger>
+                  <PopoverContent side="left">
+                    {icons.map((icon) => (
+                      <Button
+                        variant="ghost"
+                        key={icon.name}
+                        onClick={() => {
+                          canvasObject?.setMode("icon");
+                          canvasObject.setIconPath(icon.name);
+                        }}
+                      >
+                        <Image
+                          src={icon.name}
+                          alt={icon.name}
+                          width={20}
+                          height={20}
+                        />
+                      </Button>
+                    ))}
+                  </PopoverContent>
+                </Popover>
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

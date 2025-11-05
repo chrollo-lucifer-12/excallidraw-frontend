@@ -8,6 +8,7 @@ import { Arrow } from "./shapes/arrow";
 import { FreeDraw } from "./shapes/freedraw";
 import { Triangle } from "./shapes/triangle";
 import { Parallelogram } from "./shapes/parallelogram";
+import { Icon } from "./shapes/icons";
 
 export interface IShape {
   type: ShapeMode;
@@ -18,6 +19,7 @@ export interface IShape {
 }
 
 export type ShapeMode =
+  | "icon"
   | "eraser"
   | "parallelogram"
   | "polygon"
@@ -79,7 +81,7 @@ export class CanvasDrawer {
   private zoomY = 1;
   public selectShape: IShape | null = null;
   public onSelectShapeChanged?: (shape: IShape | null) => void;
-
+  private awsIcon: string | null = null;
   constructor(
     public canvas: HTMLCanvasElement,
     private ws: WebSocket | null,
@@ -97,28 +99,17 @@ export class CanvasDrawer {
     this.handleWheel = this.handleWheel.bind(this);
     this.handleKeyDown = this.handleKeyDown.bind(this);
     this.selectShape = null;
-
     canvas.addEventListener("mousedown", this.handleMouseDown);
     canvas.addEventListener("mouseup", this.handleMouseUp);
     canvas.addEventListener("mousemove", this.handleMouseMove);
     canvas.addEventListener("wheel", this.handleWheel);
     window.addEventListener("resize", this.handleResize);
     window.addEventListener("keydown", this.handleKeyDown);
-
-    const serializable = this.shapes.map((s) => ({
-      ...s,
-    }));
-
+    const serializable = this.shapes.map((s) => ({ ...s }));
     if (this.ws) {
       this.ws.onopen = (e) => {
-        this.ws?.send(
-          JSON.stringify({
-            type: "shapes",
-            shapes: serializable,
-          }),
-        );
+        this.ws?.send(JSON.stringify({ type: "shapes", shapes: serializable }));
       };
-
       this.ws.onmessage = (e) => {
         const data = JSON.parse(e.data);
         if (data.type === "shapes") {
@@ -169,14 +160,15 @@ export class CanvasDrawer {
       };
     }
   }
-
+  public setIconPath(path: string) {
+    this.awsIcon = path;
+  }
   public setSelectShape(shape: IShape | null) {
     this.selectShape = shape;
     if (this.onSelectShapeChanged) {
       this.onSelectShapeChanged(shape);
     }
   }
-
   public setLineWidth(w: number) {
     if (this.selectShape) {
       this.selectShape.lineWidth = w;
@@ -184,7 +176,6 @@ export class CanvasDrawer {
       this.drawShapes();
     }
   }
-
   public setStrokeStyle(color: string) {
     if (this.selectShape) {
       this.selectShape.strokeStyle = color;
@@ -192,23 +183,19 @@ export class CanvasDrawer {
       this.drawShapes();
     }
   }
-
   public setZoom(x: number, y: number) {
     this.zoomX = x;
     this.zoomY = y;
     this.drawShapes();
   }
-
   public setStyles(strokeStyle: string, lineWidth: number) {
     this.strokeStyle = strokeStyle;
     this.lineWidth = lineWidth;
   }
-
   public setMode(mode: ShapeMode) {
     this.currentMode = mode;
     this.shapesToEraser = [];
     this.setSelectShape(null);
-
     if (this.currentMode === "none") {
       this.canvas.style.cursor = "pointer";
     } else if (this.currentMode === "eraser") {
@@ -242,6 +229,9 @@ export class CanvasDrawer {
       case "triangle":
         this.currentShapeClass = Triangle;
         break;
+      case "icon":
+        this.currentShapeClass = Icon;
+        break;
       case "pentagon":
         this.currentShapeClass = class extends Polygon {
           constructor(
@@ -273,26 +263,21 @@ export class CanvasDrawer {
       case "parallelogram":
         this.currentShapeClass = Parallelogram;
         break;
-
       default:
         this.currentShapeClass = NullShape;
         break;
     }
   }
-
   private handleMouseDown(e: MouseEvent) {
     const rect = this.canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left - this.panX) / this.zoomX;
     const y = (e.clientY - rect.top - this.panY) / this.zoomY;
-
     if (e.button == 1) {
       this.isPanning = true;
-
       this.panStartX = e.clientX - this.panX;
       this.panStartY = e.clientY - this.panY;
       return;
     }
-
     if (this.currentMode == "text") {
       const textBox = new Text(
         x,
@@ -309,12 +294,10 @@ export class CanvasDrawer {
       this.saveShapes();
       return;
     }
-
     if (this.currentMode !== "none") {
       this.clicked = true;
       this.startX = x;
       this.startY = y;
-
       if (this.currentMode === "freedraw") {
         this.currentFreeDraw = new FreeDraw(
           x,
@@ -342,18 +325,15 @@ export class CanvasDrawer {
       }
     }
   }
-
   private handleMouseUp(e: MouseEvent) {
     const rect = this.canvas.getBoundingClientRect();
     const endX = (e.clientX - rect.left - this.panX) / this.zoomX;
     const endY = (e.clientY - rect.top - this.panY) / this.zoomY;
-
     if (this.isPanning) {
       this.isPanning = false;
       return;
     }
     if (!this.clicked) return;
-
     if (this.currentMode !== "freedraw" && this.currentMode !== "none") {
       const shape = new this.currentShapeClass(
         this.startX,
@@ -362,34 +342,29 @@ export class CanvasDrawer {
         endY,
         this.strokeStyle,
         this.lineWidth,
+        this.awsIcon,
       );
       this.shapes.push(shape);
     }
-
     this.saveShapes();
     this.clicked = false;
     this.currentFreeDraw = null;
     this.drawShapes();
   }
-
   private handleMouseMove(e: MouseEvent) {
     const rect = this.canvas.getBoundingClientRect();
     const rawX = (e.clientX - rect.left - this.panX) / this.zoomX;
     const rawY = (e.clientY - rect.top - this.panY) / this.zoomY;
-
     if (this.isPanning) {
       this.panX = e.clientX - this.panStartX;
       this.panY = e.clientY - this.panStartY;
       this.drawShapes();
       return;
     }
-
     if (!this.clicked) return;
-
     if (this.draggingShape && this.currentMode !== "eraser") {
       const dx = rawX - this.dragOffsetX;
       const dy = rawY - this.dragOffsetY;
-
       if (
         this.draggingShape.type === "rect" ||
         this.draggingShape.type === "circle" ||
@@ -400,7 +375,8 @@ export class CanvasDrawer {
         this.draggingShape.type === "triangle" ||
         this.draggingShape.type === "pentagon" ||
         this.draggingShape.type === "hexagon" ||
-        this.draggingShape.type === "parallelogram"
+        this.draggingShape.type === "parallelogram" ||
+        this.draggingShape.type == "icon"
       ) {
         (this.draggingShape as any).startX += dx;
         (this.draggingShape as any).startY += dy;
@@ -410,26 +386,21 @@ export class CanvasDrawer {
         const fd = this.draggingShape as FreeDraw;
         fd.points = fd.points.map((p) => ({ x: p.x + dx, y: p.y + dy }));
       }
-
       this.dragOffsetX = rawX;
       this.dragOffsetY = rawY;
       this.drawShapes();
       return;
     }
-
     if (this.currentMode === "freedraw" && this.currentFreeDraw) {
       this.currentFreeDraw.addPoint({ x: rawX, y: rawY });
       this.drawShapes();
       return;
     }
-
     if (this.currentMode !== "none" && this.currentMode !== "eraser") {
       this.drawShapes();
-
       this.ctx.save();
       this.ctx.translate(this.panX, this.panY);
       this.ctx.scale(this.zoomX, this.zoomY);
-
       const previewShape = new this.currentShapeClass(
         this.startX,
         this.startY,
@@ -437,19 +408,17 @@ export class CanvasDrawer {
         rawY,
         this.strokeStyle,
         this.lineWidth,
+        this.awsIcon,
       );
       previewShape.draw(this.ctx);
-
       this.ctx.restore();
       return;
     }
     if (this.currentMode === "eraser") {
       for (let i = this.shapes.length - 1; i >= 0; i--) {
         const shape = this.shapes[i];
-
         const ex = rawX;
         const ey = rawY;
-
         const inEraser =
           shape.isInside(ex, ey) ||
           (shape.type === "freedraw" &&
@@ -458,7 +427,6 @@ export class CanvasDrawer {
                 Math.abs(p.x - ex) <= this.eraserSize &&
                 Math.abs(p.y - ey) <= this.eraserSize,
             ));
-
         if (inEraser) {
           this.shapes.splice(i, 1);
         }
@@ -467,7 +435,6 @@ export class CanvasDrawer {
       this.saveShapes();
     }
   }
-
   public drawShapes() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.ctx.save();
@@ -478,7 +445,6 @@ export class CanvasDrawer {
     }
     this.ctx.restore();
   }
-
   public saveShapes() {
     const serializable = this.shapes.map((s) => {
       if (s.type === "text") {
@@ -490,14 +456,11 @@ export class CanvasDrawer {
       }
       return { ...s };
     });
-
     localStorage.setItem("shapes", JSON.stringify(serializable));
   }
-
   private loadShapes() {
     const data = localStorage.getItem("shapes");
     if (!data) return;
-
     const parsed = JSON.parse(data);
     this.shapes = parsed.map((s: any) => {
       switch (s.type) {
@@ -604,36 +567,39 @@ export class CanvasDrawer {
             s.strokeStyle,
             s.lineWidth,
           );
+        case "icon":
+          return new Icon(
+            s.startX,
+            s.startY,
+            s.endX,
+            s.endY,
+            s.strokeStyle,
+            s.lineWidth,
+            s.path,
+          );
         default:
           return new NullShape(0, 0, 0, 0);
       }
     });
-
     this.drawShapes();
   }
-
   public resizeCanvas() {
     this.canvas.width = this.canvas.offsetWidth || window.innerWidth;
     this.canvas.height = this.canvas.offsetHeight || window.innerHeight;
     this.drawShapes();
   }
-
   private handleResize() {
     this.resizeCanvas();
   }
-
   private handleKeyDown(e: KeyboardEvent) {
     if (e.key === "+") {
       const centerX = this.canvas.width / 2 - this.panX;
       const centerY = this.canvas.height / 2 - this.panY;
       const zoomFactor = 1.2;
-
       this.zoomX *= zoomFactor;
       this.zoomY *= zoomFactor;
-
       this.panX -= centerX * (zoomFactor - 1);
       this.panY -= centerY * (zoomFactor - 1);
-
       this.drawShapes();
       return;
     }
@@ -641,10 +607,8 @@ export class CanvasDrawer {
       const centerX = this.canvas.width / 2 - this.panX;
       const centerY = this.canvas.height / 2 - this.panY;
       const zoomFactor = 1 / 1.2;
-
       this.zoomX *= zoomFactor;
       this.zoomY *= zoomFactor;
-
       this.panX -= centerX * (zoomFactor - 1);
       this.panY -= centerY * (zoomFactor - 1);
       this.drawShapes();
@@ -660,13 +624,11 @@ export class CanvasDrawer {
     }
     this.saveShapes();
   }
-
   private handleWheel(e: WheelEvent) {
     this.panX -= e.deltaX;
     this.panY -= e.deltaY;
     this.drawShapes();
   }
-
   destroy() {
     this.canvas.removeEventListener("mousedown", this.handleMouseDown);
     this.canvas.removeEventListener("mouseup", this.handleMouseUp);
