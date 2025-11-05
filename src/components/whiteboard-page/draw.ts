@@ -160,6 +160,17 @@ export class CanvasDrawer {
       };
     }
   }
+
+  public download() {
+    let imageDataUrl = this.canvas.toDataURL("image/png");
+    let downloadLink = document.createElement("a");
+    downloadLink.href = imageDataUrl;
+    downloadLink.download = "my-canvas-image.png";
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+  }
+
   public setIconPath(path: string) {
     this.awsIcon = path;
   }

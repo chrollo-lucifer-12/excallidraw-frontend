@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CanvasDrawer, IShape } from "./draw";
 import { AppSidebar } from "./app-sidebar";
+import { Button } from "../ui/button";
 
 const WhiteboardPage = ({
   slug,
@@ -97,6 +98,15 @@ const WhiteboardPage = ({
     <div className="relative m-0 p-0">
       <div className="absolute bottom-4 right-4 border border-gray-300 z-2  rounded-md bg-white/90">
         <canvas ref={minimapRef} width={200} height={150} className="block" />
+      </div>
+      <div className="absolute top-4 right-4 border border-gray-300 z-2  rounded-md bg-white/90">
+        <Button
+          onClick={() => {
+            drawerRef.current?.download();
+          }}
+        >
+          Save
+        </Button>
       </div>
       <div className="absolute top-4 left-4 z-50">
         <AppSidebar canvasObject={drawerReady!} selectedShape={selectedShape} />
