@@ -9,6 +9,7 @@ import { FreeDraw } from "./shapes/freedraw";
 import { Triangle } from "./shapes/triangle";
 import { Parallelogram } from "./shapes/parallelogram";
 import { Icon } from "./shapes/icons";
+import { Code } from "./shapes/code";
 
 export interface IShape {
   type: ShapeMode;
@@ -19,6 +20,7 @@ export interface IShape {
 }
 
 export type ShapeMode =
+  | "code"
   | "icon"
   | "eraser"
   | "parallelogram"
@@ -242,6 +244,9 @@ export class CanvasDrawer {
         break;
       case "icon":
         this.currentShapeClass = Icon;
+        break;
+      case "code":
+        this.currentShapeClass = Code;
         break;
       case "pentagon":
         this.currentShapeClass = class extends Polygon {
@@ -587,6 +592,16 @@ export class CanvasDrawer {
             s.strokeStyle,
             s.lineWidth,
             s.path,
+          );
+        case "code":
+          return new Code(
+            s.startX,
+            s.startY,
+            s.endX,
+            s.endY,
+            s.strokeStyle,
+            s.lineWidth,
+            s.text,
           );
         default:
           return new NullShape(0, 0, 0, 0);

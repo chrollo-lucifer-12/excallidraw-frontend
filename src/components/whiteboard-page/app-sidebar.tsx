@@ -7,6 +7,7 @@ import {
   ArrowRight,
   Edit,
   Amphora,
+  Code,
 } from "lucide-react";
 
 import {
@@ -45,6 +46,7 @@ const shapeItems = [
   { title: "Circle", url: "#", icon: Circle, name: "circle" },
   { title: "Line", url: "#", icon: ArrowRight, name: "line" },
   { title: "None", url: "#", icon: Edit, name: "none" },
+  { title: "Code", url: "#", icon: Code, name: "code" },
 ];
 
 const icons = [
