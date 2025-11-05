@@ -2,7 +2,11 @@ import { IShape, ShapeMode } from "../draw";
 
 export class Text implements IShape {
   type: ShapeMode = "text";
-  text: string = "";
+  text: string = "type something...";
+  showCursor = false;
+  lastBlink = 0;
+  blinkSpeed = 500;
+
   constructor(
     public startX: number,
     public startY: number,
@@ -12,40 +16,63 @@ export class Text implements IShape {
     public lineWidth: number,
   ) {}
 
-  isInside(x: number, y: number) {
-    const minX = Math.min(this.startX, this.endX);
-    const maxX = Math.max(this.startX, this.endX);
-    const minY = Math.min(this.startY, this.endY);
-    const maxY = Math.max(this.startY, this.endY);
+  isInside(x: number, y: number, ctx?: CanvasRenderingContext2D) {
+    if (!ctx) return false;
+
+    const fontSize = this.lineWidth * 10;
+    const lineHeight = fontSize + 4;
+    ctx.font = `${fontSize}px serif`;
+
+    const lines = this.text.split("\n");
+
+    const textWidth = Math.max(
+      ...lines.map((line) => ctx.measureText(line).width),
+    );
+    const textHeight = lines.length * lineHeight;
+
+    const minX = this.startX;
+    const minY = this.startY;
+    const maxX = this.startX + textWidth + 8;
+    const maxY = this.startY + textHeight + 8;
+
     return x >= minX && x <= maxX && y >= minY && y <= maxY;
   }
 
-  draw(ctx: CanvasRenderingContext2D) {
+  draw(ctx: CanvasRenderingContext2D, timestamp?: number) {
+    ctx.save();
     ctx.strokeStyle = this.strokeStyle;
     ctx.lineWidth = this.lineWidth;
-    ctx.strokeRect(
-      this.startX,
-      this.startY,
-      this.endX - this.startX,
-      this.endY - this.startY,
-    );
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(
-      this.startX + 1,
-      this.startY + 1,
-      this.endX - this.startX - 2,
-      this.endY - this.startY - 2,
-    );
-    ctx.clip();
-
     ctx.textBaseline = "top";
     ctx.fillStyle = this.strokeStyle;
-    const lineHeight = 16;
-    const words = this.text.split("\n");
-    for (let i = 0; i < words.length; i++) {
-      ctx.fillText(words[i], this.startX + 4, this.startY + 4 + i * lineHeight);
+
+    const fontSize = this.lineWidth * 10;
+    const lineHeight = fontSize + 4;
+    ctx.font = `${fontSize}px serif`;
+
+    const lines = this.text.split("\n");
+    let cursorX = this.startX + 4;
+    let cursorY = this.startY + 4;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      ctx.fillText(line, this.startX + 4, this.startY + 4 + i * lineHeight);
+
+      if (i === lines.length - 1) {
+        const width = ctx.measureText(line).width;
+        cursorX = this.startX + 4 + width;
+        cursorY = this.startY + 4 + i * lineHeight;
+      }
+    }
+
+    if (timestamp !== undefined) {
+      if (timestamp - this.lastBlink >= this.blinkSpeed) {
+        this.showCursor = !this.showCursor;
+        this.lastBlink = timestamp;
+      }
+    }
+
+    if (this.showCursor) {
+      ctx.fillRect(cursorX, cursorY, 2, fontSize);
     }
 
     ctx.restore();
@@ -57,5 +84,8 @@ export class Text implements IShape {
 
   removeChar() {
     this.text = this.text.slice(0, -1);
+    if (this.text.length === 0) {
+      this.text = "type something...";
+    }
   }
 }

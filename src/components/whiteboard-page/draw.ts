@@ -327,16 +327,15 @@ export class CanvasDrawer {
     } else {
       for (let i = this.shapes.length - 1; i >= 0; i--) {
         const shape = this.shapes[i];
-        if (shape.isInside(x, y)) {
+        if (shape.isInside(x, y, this.ctx)) {
           this.draggingShape = shape;
           this.setSelectShape(shape);
-
-          console.log(shape);
           this.dragOffsetX = x;
           this.dragOffsetY = y;
           this.clicked = true;
           if (shape.type === "text") {
             this.selectedTextBox = shape as Text;
+            this.selectedTextBox.showCursor = true;
           }
           break;
         }

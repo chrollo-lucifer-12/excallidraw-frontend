@@ -19,9 +19,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { CanvasDrawer, IShape } from "./draw";
+import { CanvasDrawer, IShape, ShapeMode } from "./draw";
 import { Input } from "../ui/input";
-import { Slider } from "@/components/ui/slider";
 import { useState } from "react";
 const shapeItems = [
   { title: "Eraser", url: "#", icon: Edit, name: "eraser" },
@@ -74,7 +73,9 @@ export function AppSidebar({
                       <button
                         key={item.name}
                         className="flex items-center gap-2 text-sm w-full text-left hover:bg-gray-100 rounded px-1 py-1"
-                        onClick={() => canvasObject?.setMode(item.name)}
+                        onClick={() =>
+                          canvasObject?.setMode(item.name as ShapeMode)
+                        }
                       >
                         <item.icon className="w-4 h-4" />
                         <span>{item.title}</span>
