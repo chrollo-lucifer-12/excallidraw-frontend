@@ -86,14 +86,20 @@ export class CanvasDrawer {
   private awsIcon: string | null = null;
   private readonly handleSize = 8; // px
   private readonly handleColor = "#3b82f6";
+  private roomId: string | null = null;
+  private userId: string | null = null;
 
   constructor(
     public canvas: HTMLCanvasElement,
     private ws: WebSocket | null,
+    roomId: string,
+    userId: string,
   ) {
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Canvas context not found");
     this.ctx = ctx;
+    this.userId = userId;
+    this.roomId = roomId;
     this.resizeCanvas();
     this.loadShapes();
     this.canvas.style.cursor = "pointer";
@@ -110,15 +116,12 @@ export class CanvasDrawer {
     canvas.addEventListener("wheel", this.handleWheel);
     window.addEventListener("resize", this.handleResize);
     window.addEventListener("keydown", this.handleKeyDown);
-    const serializable = this.shapes.map((s) => ({ ...s }));
     if (this.ws) {
-      this.ws.onopen = (e) => {
-        this.ws?.send(JSON.stringify({ type: "shapes", shapes: serializable }));
-      };
       this.ws.onmessage = (e) => {
         const data = JSON.parse(e.data);
-        if (data.type === "shapes") {
-          this.shapes = data.shapes.map((s: any) => {
+        if (data.type === "shapes_update") {
+          const newShapes = JSON.parse(data.payload.shapes);
+          this.shapes = newShapes.map((s: any) => {
             switch (s.type) {
               case "rect":
                 return new Rect(
@@ -156,6 +159,93 @@ export class CanvasDrawer {
                 );
                 s.points.slice(1).forEach((p: any) => fd.addPoint(p));
                 return fd;
+              case "arrow":
+                return new Arrow(
+                  s.startX,
+                  s.startY,
+                  s.endX,
+                  s.endY,
+                  s.strokeStyle,
+                  s.lineWidth,
+                );
+              case "text":
+                const t = new Text(
+                  s.startX,
+                  s.startY,
+                  s.endX,
+                  s.endY,
+                  s.strokeStyle,
+                  s.lineWidth,
+                );
+                t.text = s.text;
+                return t;
+              case "ellipse":
+                return new Ellipse(
+                  s.startX,
+                  s.startY,
+                  s.endX,
+                  s.endY,
+                  s.strokeStyle,
+                  s.lineWidth,
+                );
+              case "triangle":
+                return new Triangle(
+                  s.startX,
+                  s.startY,
+                  s.endX,
+                  s.endY,
+                  s.strokeStyle,
+                  s.lineWidth,
+                );
+              case "pentagon":
+                return new Polygon(
+                  5,
+                  s.startX,
+                  s.startY,
+                  s.endX,
+                  s.endY,
+                  s.strokeStyle,
+                  s.lineWidth,
+                );
+              case "hexagon":
+                return new Polygon(
+                  6,
+                  s.startX,
+                  s.startY,
+                  s.endX,
+                  s.endY,
+                  s.strokeStyle,
+                  s.lineWidth,
+                );
+              case "parallelogram":
+                return new Parallelogram(
+                  s.startX,
+                  s.startY,
+                  s.endX,
+                  s.endY,
+                  s.strokeStyle,
+                  s.lineWidth,
+                );
+              case "icon":
+                return new Icon(
+                  s.startX,
+                  s.startY,
+                  s.endX,
+                  s.endY,
+                  s.strokeStyle,
+                  s.lineWidth,
+                  s.path,
+                );
+              case "code":
+                return new Code(
+                  s.startX,
+                  s.startY,
+                  s.endX,
+                  s.endY,
+                  s.strokeStyle,
+                  s.lineWidth,
+                  s.text,
+                );
               default:
                 return new NullShape(0, 0, 0, 0);
             }
@@ -567,6 +657,16 @@ export class CanvasDrawer {
       }
       return { ...s };
     });
+    this.ws?.send(
+      JSON.stringify({
+        type: "shapes",
+        payload: {
+          roomId: this.roomId,
+          userId: this.userId,
+          shapes: JSON.stringify(serializable),
+        },
+      }),
+    );
     localStorage.setItem("shapes", JSON.stringify(serializable));
   }
   private loadShapes() {

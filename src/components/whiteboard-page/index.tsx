@@ -23,14 +23,20 @@ const WhiteboardPage = ({
   useEffect(() => {
     let ws: WebSocket | null = null;
     if (slug && userId) {
-      ws = new WebSocket(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/ws?roomId=${slug}&userId=${userId}`,
-      );
+      ws = new WebSocket(`${process.env.NEXT_PUBLIC_BACKEND_URL}/ws`);
       wsRef.current = ws;
 
       ws.onopen = () => {
         console.log("WebSocket connected");
-        ws?.send(JSON.stringify({ type: "test", message: "hello" }));
+        ws?.send(
+          JSON.stringify({
+            type: "join",
+            payload: {
+              roomId: slug,
+              userId: userId,
+            },
+          }),
+        );
       };
 
       ws.onerror = (error) => console.error("WebSocket Error:", error);
@@ -41,7 +47,7 @@ const WhiteboardPage = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const drawer = new CanvasDrawer(canvas, ws);
+    const drawer = new CanvasDrawer(canvas, ws, slug!, userId);
     drawerRef.current = drawer;
     setDrawerReady(drawer); // mark drawer ready
 

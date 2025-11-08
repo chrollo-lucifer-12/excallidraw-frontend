@@ -7,6 +7,7 @@ import { getWhiteboards } from "@/app/util/data";
 import DashboardPage from "@/components/dashboard-page";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import axios from "axios";
 
 const Page = async () => {
   const cookieStore = await cookies();
@@ -20,6 +21,19 @@ const Page = async () => {
     queryKey: ["whiteboards"],
     queryFn: () => getWhiteboards(token),
   });
+
+  const data = await axios.get(
+    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/user/me`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+
+  if (data.data.error) {
+    redirect("/create-profile");
+  }
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
