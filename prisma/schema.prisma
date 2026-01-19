@@ -79,6 +79,7 @@ model WhiteBoard {
   image         String?
   userId                String
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  data String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }

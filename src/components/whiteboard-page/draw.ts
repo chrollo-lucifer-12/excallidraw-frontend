@@ -10,6 +10,7 @@ import { Triangle } from "./shapes/triangle";
 import { Parallelogram } from "./shapes/parallelogram";
 import { Icon } from "./shapes/icons";
 import { Code } from "./shapes/code";
+import { prisma } from "@/lib/prisma";
 
 export interface IShape {
   type: ShapeMode;
@@ -86,20 +87,11 @@ export class CanvasDrawer {
   private awsIcon: string | null = null;
   private readonly handleSize = 8; // px
   private readonly handleColor = "#3b82f6";
-  private roomId: string | null = null;
-  private userId: string | null = null;
 
-  constructor(
-    public canvas: HTMLCanvasElement,
-    private ws: WebSocket | null,
-    roomId: string,
-    userId: string,
-  ) {
+  constructor(public canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Canvas context not found");
     this.ctx = ctx;
-    this.userId = userId;
-    this.roomId = roomId;
     this.resizeCanvas();
     this.loadShapes();
     this.canvas.style.cursor = "pointer";
@@ -116,154 +108,20 @@ export class CanvasDrawer {
     canvas.addEventListener("wheel", this.handleWheel);
     window.addEventListener("resize", this.handleResize);
     window.addEventListener("keydown", this.handleKeyDown);
-    if (this.ws) {
-      this.ws.onmessage = (e) => {
-        const data = JSON.parse(e.data);
-        if (data.type === "shapes_update") {
-          const newShapes = JSON.parse(data.payload.shapes);
-          this.shapes = newShapes.map((s: any) => {
-            switch (s.type) {
-              case "rect":
-                return new Rect(
-                  s.startX,
-                  s.startY,
-                  s.endX,
-                  s.endY,
-                  s.strokeStyle,
-                  s.lineWidth,
-                );
-              case "circle":
-                return new Circle(
-                  s.startX,
-                  s.startY,
-                  s.endX,
-                  s.endY,
-                  s.strokeStyle,
-                  s.lineWidth,
-                );
-              case "line":
-                return new Line(
-                  s.startX,
-                  s.startY,
-                  s.endX,
-                  s.endY,
-                  s.strokeStyle,
-                  s.lineWidth,
-                );
-              case "freedraw":
-                const fd = new FreeDraw(
-                  s.points[0].x,
-                  s.points[0].y,
-                  s.strokeStyle,
-                  s.lineWidth,
-                );
-                s.points.slice(1).forEach((p: any) => fd.addPoint(p));
-                return fd;
-              case "arrow":
-                return new Arrow(
-                  s.startX,
-                  s.startY,
-                  s.endX,
-                  s.endY,
-                  s.strokeStyle,
-                  s.lineWidth,
-                );
-              case "text":
-                const t = new Text(
-                  s.startX,
-                  s.startY,
-                  s.endX,
-                  s.endY,
-                  s.strokeStyle,
-                  s.lineWidth,
-                );
-                t.text = s.text;
-                return t;
-              case "ellipse":
-                return new Ellipse(
-                  s.startX,
-                  s.startY,
-                  s.endX,
-                  s.endY,
-                  s.strokeStyle,
-                  s.lineWidth,
-                );
-              case "triangle":
-                return new Triangle(
-                  s.startX,
-                  s.startY,
-                  s.endX,
-                  s.endY,
-                  s.strokeStyle,
-                  s.lineWidth,
-                );
-              case "pentagon":
-                return new Polygon(
-                  5,
-                  s.startX,
-                  s.startY,
-                  s.endX,
-                  s.endY,
-                  s.strokeStyle,
-                  s.lineWidth,
-                );
-              case "hexagon":
-                return new Polygon(
-                  6,
-                  s.startX,
-                  s.startY,
-                  s.endX,
-                  s.endY,
-                  s.strokeStyle,
-                  s.lineWidth,
-                );
-              case "parallelogram":
-                return new Parallelogram(
-                  s.startX,
-                  s.startY,
-                  s.endX,
-                  s.endY,
-                  s.strokeStyle,
-                  s.lineWidth,
-                );
-              case "icon":
-                return new Icon(
-                  s.startX,
-                  s.startY,
-                  s.endX,
-                  s.endY,
-                  s.strokeStyle,
-                  s.lineWidth,
-                  s.path,
-                );
-              case "code":
-                return new Code(
-                  s.startX,
-                  s.startY,
-                  s.endX,
-                  s.endY,
-                  s.strokeStyle,
-                  s.lineWidth,
-                  s.text,
-                );
-              default:
-                return new NullShape(0, 0, 0, 0);
-            }
-          });
-          this.drawShapes();
-        }
-      };
-    }
   }
 
   public download() {
     let imageDataUrl = this.canvas.toDataURL("image/png");
-    let downloadLink = document.createElement("a");
-    downloadLink.href = imageDataUrl;
-    downloadLink.download = "my-canvas-image.png";
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
+    // upload to s3
+    let imageUrl = "";
+    prisma.whiteBoard.update({
+      where: {
+        slug: this.getSlug(),
+      },
+      data: {
+        image: imageUrl,
+      },
+    });
   }
 
   public setIconPath(path: string) {
@@ -646,7 +504,12 @@ export class CanvasDrawer {
     }
     this.ctx.restore();
   }
-  public saveShapes() {
+
+  public getSlug(): string {
+    return "";
+  }
+
+  public async saveShapes() {
     const serializable = this.shapes.map((s) => {
       if (s.type === "text") {
         const t = s as Text;
@@ -657,20 +520,18 @@ export class CanvasDrawer {
       }
       return { ...s };
     });
-    this.ws?.send(
-      JSON.stringify({
-        type: "shapes",
-        payload: {
-          roomId: this.roomId,
-          userId: this.userId,
-          shapes: JSON.stringify(serializable),
-        },
-      }),
-    );
-    localStorage.setItem("shapes", JSON.stringify(serializable));
+    const serializableStr = JSON.stringify(serializable);
+    this.download();
+    await prisma.whiteBoard.update({
+      where: { slug: this.getSlug() },
+      data: serializableStr,
+    });
   }
-  private loadShapes() {
-    const data = localStorage.getItem("shapes");
+  private async loadShapes() {
+    const data = await prisma.whiteBoard.findUnique({
+      where: { slug: this.getSlug() },
+      select: { data: true },
+    });
     if (!data) return;
     const parsed = JSON.parse(data);
     this.shapes = parsed.map((s: any) => {

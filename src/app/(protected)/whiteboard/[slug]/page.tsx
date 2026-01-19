@@ -1,30 +1,40 @@
 import WhiteboardPage from "@/components/whiteboard-page";
-import axios from "axios";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { headers } from "next/headers";
+import { notFound, redirect } from "next/navigation";
 
 type WhiteboardPageProps = {
-  params: Promise<{ slug: string }>; // More accurate type
+  params: Promise<{ slug: string }>;
 };
 
 const Page = async ({ params }: WhiteboardPageProps) => {
   const { slug } = await params;
-  const cookieStore = await cookies();
-  const token = cookieStore.get("token")?.value;
-  if (!token) {
-    redirect("/login");
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session) {
+    redirect("/auth/sign-in");
   }
 
-  const data = await axios.get(
-    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/user/me`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    },
-  );
+  const userId = session.user.userId;
 
-  return <WhiteboardPage slug={slug} userId={data.data.user.UserID} />;
+  const whiteboard = await prisma.whiteBoard.findUnique({
+    where: {
+      slug,
+      userId,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  if (!whiteboard) {
+    notFound();
+  }
+
+  return <WhiteboardPage />;
 };
 
 export default Page;

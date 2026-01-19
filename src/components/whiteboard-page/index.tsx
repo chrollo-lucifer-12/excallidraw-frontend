@@ -4,52 +4,21 @@ import { CanvasDrawer, IShape } from "./draw";
 import { AppSidebar } from "./app-sidebar";
 import { Button } from "../ui/button";
 
-const WhiteboardPage = ({
-  slug,
-  userId,
-}: {
-  slug: string | null;
-  userId: any | null;
-}) => {
+const WhiteboardPage = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawerRef = useRef<CanvasDrawer | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
   const minimapRef = useRef<HTMLCanvasElement>(null);
   const [selectedShape, setSelectedShape] = useState<IShape | null>(null);
 
-  // Track when drawer is ready
   const [drawerReady, setDrawerReady] = useState<CanvasDrawer | null>(null);
 
   useEffect(() => {
-    let ws: WebSocket | null = null;
-    if (slug && userId) {
-      ws = new WebSocket(`${process.env.NEXT_PUBLIC_BACKEND_URL}/ws`);
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        console.log("WebSocket connected");
-        ws?.send(
-          JSON.stringify({
-            type: "join",
-            payload: {
-              roomId: slug,
-              userId: userId,
-            },
-          }),
-        );
-      };
-
-      ws.onerror = (error) => console.error("WebSocket Error:", error);
-      ws.onclose = (event) =>
-        console.log("Connection closed:", event.code, event.reason);
-    }
-
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const drawer = new CanvasDrawer(canvas, ws, slug!, userId);
+    const drawer = new CanvasDrawer(canvas);
     drawerRef.current = drawer;
-    setDrawerReady(drawer); // mark drawer ready
+    setDrawerReady(drawer);
 
     drawer.setMode("icon");
     drawer.setStyles("green", 2);
@@ -85,10 +54,10 @@ const WhiteboardPage = ({
     return () => {
       drawer.destroy();
       window.removeEventListener("resize", handleResize);
-      ws?.close();
+
       clearInterval(interval);
     };
-  }, [slug, userId]);
+  }, []);
 
   useEffect(() => {
     if (!drawerReady) return;
@@ -105,15 +74,7 @@ const WhiteboardPage = ({
       <div className="absolute bottom-4 right-4 border border-gray-300 z-2  rounded-md bg-white/90">
         <canvas ref={minimapRef} width={200} height={150} className="block" />
       </div>
-      <div className="absolute top-4 right-4 border border-gray-300 z-2  rounded-md bg-white/90">
-        <Button
-          onClick={() => {
-            drawerRef.current?.download();
-          }}
-        >
-          Save
-        </Button>
-      </div>
+
       <div className="absolute top-4 left-4 z-50">
         <AppSidebar canvasObject={drawerReady!} selectedShape={selectedShape} />
       </div>
