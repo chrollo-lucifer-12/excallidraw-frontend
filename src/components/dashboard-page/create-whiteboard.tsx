@@ -11,51 +11,50 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "../ui/button";
 import { Plus } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Input } from "../ui/input";
-import { useState } from "react";
-import axios from "axios";
-import { toast } from "sonner"; // or any toast library you use
-import { useLocalStorage } from "@/hooks/use-localstorage";
-
-const CreateWhiteboard = ({ token }: { token: string }) => {
-  const queryClient = useQueryClient();
-  const [whiteboardName, setWhiteboardName] = useState("");
+import { useOptimistic, useState, useTransition } from "react";
+import { createWhiteBoard } from "@/app/(protected)/_actions/create-whiteboard";
+import { Whiteboard } from "@/lib/types";
+const CreateWhiteboard = ({
+  updateWhiteBoards,
+}: {
+  updateWhiteBoards: (action: {
+    type: "add" | "replace" | "remove";
+    payload: any;
+  }) => void;
+}) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [error, setError] = useState("");
+  const [isPending, startTransition] = useTransition();
 
-  const createWhiteboardMutation = useMutation({
-    mutationKey: ["create-whiteboard"],
-    mutationFn: async (name: string) => {
-      const response = await axios.post(
-        "http://localhost:8000/api/v1/whiteboard/create",
-        { name },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+  const formAction = async (formData: FormData) => {
+    const tempId = crypto.randomUUID();
+
+    startTransition(async () => {
+      updateWhiteBoards({
+        type: "add",
+        payload: {
+          name: formData.get("name"),
+          slug: "",
+          image: "",
+          tempId,
         },
-      );
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["whiteboards"] }); // refresh whiteboards
-      setWhiteboardName("");
-      setIsOpen(false);
-      toast.success("Whiteboard created successfully!");
-    },
-    onError: (error: any) => {
-      toast.error(
-        error?.response?.data?.message || "Failed to create whiteboard",
-      );
-    },
-  });
+      });
 
-  const handleCreate = () => {
-    if (!whiteboardName.trim()) {
-      toast.error("Please enter a name for the whiteboard");
-      return;
-    }
-    createWhiteboardMutation.mutate(whiteboardName);
+      const created = await createWhiteBoard(formData);
+
+      if (!created?.success) {
+        updateWhiteBoards({ type: "remove", payload: { tempId } });
+        return;
+      }
+
+      updateWhiteBoards({
+        type: "replace",
+        payload: { ...created, tempId },
+      });
+
+      setIsOpen(false);
+    });
   };
 
   return (
@@ -73,17 +72,13 @@ const CreateWhiteboard = ({ token }: { token: string }) => {
             Enter a name for your new whiteboard.
           </DialogDescription>
         </DialogHeader>
-        <Input
-          placeholder="Whiteboard name"
-          value={whiteboardName}
-          onChange={(e) => setWhiteboardName(e.target.value)}
-        />
-        <Button
-          onClick={handleCreate}
-          disabled={createWhiteboardMutation.isPending}
-        >
-          {createWhiteboardMutation.isPending ? "Creating..." : "Create"}
-        </Button>
+        {error && <p className="text-red-500 mb-2">{error}</p>}
+        <form action={formAction}>
+          <Input placeholder="Whiteboard name" name="name" />
+          <Button type="submit" disabled={isPending}>
+            {isPending ? "Creating..." : "Create"}
+          </Button>
+        </form>
       </DialogContent>
     </Dialog>
   );

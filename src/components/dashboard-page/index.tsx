@@ -1,62 +1,32 @@
 "use client";
-import { useQuery } from "@tanstack/react-query";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { FileText } from "lucide-react";
-import { useRouter } from "next/navigation";
+
 import CreateWhiteboard from "./create-whiteboard";
-import { getWhiteboards } from "@/app/util/data";
-import Loading from "./loading";
+import { Whiteboard } from "@/lib/types";
+import { useOptimistic } from "react";
 
-const DashboardPage = ({ token }: { token: string }) => {
-  const router = useRouter();
+const DashboardPage = ({ whiteboards }: { whiteboards: Whiteboard[] }) => {
+  const [optimisticWhiteboards, updateWhiteboards] = useOptimistic<
+    Whiteboard[],
+    { type: "add" | "replace" | "remove"; payload: any }
+  >(whiteboards, (state, action) => {
+    if (action.type === "add") {
+      return [...state, action.payload];
+    }
 
-  const whiteboardQuery = useQuery({
-    queryKey: ["whiteboards"],
-    queryFn: () => getWhiteboards(token),
-    enabled: !!token,
-    staleTime: 1000 * 60 * 5,
-    refetchOnWindowFocus: false,
+    if (action.type === "replace") {
+      return state.map((wb) =>
+        wb.tempId === action.payload.tempId ? action.payload : wb,
+      );
+    }
+
+    if (action.type === "remove") {
+      return state.filter((wb) => wb.tempId !== action.payload.tempId);
+    }
+
+    return state;
   });
-
-  if (whiteboardQuery.isLoading) {
-    <Loading />;
-  }
-
-  if (!whiteboardQuery.data || whiteboardQuery.data.length === 0) {
-    return (
-      <div className="container mx-auto p-6">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold">My Whiteboards</h1>
-            <p className="text-muted-foreground mt-1">
-              Manage and organize your whiteboards
-            </p>
-          </div>
-          <CreateWhiteboard token={token} />
-        </div>
-
-        <div className="flex flex-col items-center justify-center min-h-[400px] border-2 border-dashed rounded-lg p-12">
-          <FileText className="h-16 w-16 text-muted-foreground mb-4" />
-          <h2 className="text-2xl font-semibold mb-2">
-            No whiteboards available
-          </h2>
-          <p className="text-muted-foreground text-center mb-6 max-w-md">
-            Get started by creating your first whiteboard to collaborate and
-            brainstorm ideas.
-          </p>
-          <CreateWhiteboard token={token} />
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="container mx-auto p-6">
@@ -64,30 +34,27 @@ const DashboardPage = ({ token }: { token: string }) => {
         <div>
           <h1 className="text-3xl font-bold">My Whiteboards</h1>
           <p className="text-muted-foreground mt-1">
-            {whiteboardQuery.data.length}{" "}
-            {whiteboardQuery.data.length === 1 ? "whiteboard" : "whiteboards"}
+            Manage and organize your whiteboards
           </p>
         </div>
-        <CreateWhiteboard token={token} />
+        <CreateWhiteboard updateWhiteBoards={updateWhiteboards} />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {whiteboardQuery.data.map((whiteboard: any) => (
-          <Card
-            key={whiteboard.Slug}
-            className="hover:shadow-lg transition-shadow cursor-pointer"
-            onClick={() => router.push(`/whiteboard/${whiteboard.Slug}`)}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {optimisticWhiteboards.map((board) => (
+          <div
+            key={board.slug || board.name}
+            className="p-4 rounded-2xl shadow-sm border"
           >
-            <CardHeader>
-              <CardTitle>{whiteboard.Name || "Untitled Whiteboard"}</CardTitle>
-              <CardDescription>
-                {whiteboard.createdAt
-                  ? new Date(whiteboard.CreatedAt).toLocaleDateString()
-                  : "No date"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent></CardContent>
-          </Card>
+            <div className="flex items-center gap-3">
+              <FileText className="w-5 h-5" />
+              <h2 className="font-semibold">{board.name}</h2>
+            </div>
+
+            <p className="text-sm text-muted-foreground mt-2">
+              Slug: {board.slug || "Generating..."}
+            </p>
+          </div>
         ))}
       </div>
     </div>

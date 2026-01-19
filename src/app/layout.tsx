@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import ReactQueryProvider from "@/react-query";
+import { Providers } from "@/better-auth-ui-provider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -31,9 +32,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} antialiased`}>
-        <ReactQueryProvider>{children}</ReactQueryProvider>
-
+      <body
+        className={`${inter.className} antialiased min-h-screen flex flex-col`}
+      >
+        <ReactQueryProvider>
+          <Providers>{children}</Providers>
+        </ReactQueryProvider>
         <Toaster />
       </body>
     </html>

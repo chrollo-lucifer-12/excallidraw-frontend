@@ -1,45 +1,33 @@
-import {
-  dehydrate,
-  HydrationBoundary,
-  QueryClient,
-} from "@tanstack/react-query";
-import { getWhiteboards } from "@/app/util/data";
+import { auth } from "@/lib/auth";
+
 import DashboardPage from "@/components/dashboard-page";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import axios from "axios";
+import { headers } from "next/headers";
+import { prisma } from "@/lib/prisma";
 
 const Page = async () => {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("token")?.value;
-  if (!token) {
-    redirect("/login");
-  }
-  const queryClient = new QueryClient();
-
-  await queryClient.prefetchQuery({
-    queryKey: ["whiteboards"],
-    queryFn: () => getWhiteboards(token),
+  const session = await auth.api.getSession({
+    headers: await headers(),
   });
 
-  const data = await axios.get(
-    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/user/me`,
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    },
-  );
-
-  if (data.data.error) {
-    redirect("/create-profile");
+  if (!session) {
+    redirect("/auth/sign-in");
   }
 
-  return (
-    <HydrationBoundary state={dehydrate(queryClient)}>
-      <DashboardPage token={token} />
-    </HydrationBoundary>
-  );
+  const userId = session.user.userId;
+
+  const whiteboards = await prisma.whiteBoard.findMany({
+    where: {
+      userId,
+    },
+    select: {
+      name: true,
+      slug: true,
+      image: true,
+    },
+  });
+
+  return <DashboardPage whiteboards={whiteboards} />;
 };
 
 export default Page;
