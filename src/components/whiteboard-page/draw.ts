@@ -103,6 +103,7 @@ export class CanvasDrawer {
   private history: string[] = [];
   private historyIndex: number = -1;
   private readonly MAX_HISTORY = 100;
+  private clipboard: IShape | null = null;
 
   constructor(public canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext("2d");
@@ -124,6 +125,182 @@ export class CanvasDrawer {
     canvas.addEventListener("wheel", this.handleWheel);
     window.addEventListener("resize", this.handleResize);
     window.addEventListener("keydown", this.handleKeyDown);
+  }
+
+  copySelectedShape() {
+    if (!this.selectShape) return;
+
+    this.clipboard = { ...this.selectShape };
+  }
+
+  pasteClipboardShape() {
+    if (!this.clipboard) return;
+
+    const s = this.clipboard;
+
+    let shape: IShape | null = null;
+
+    switch (s.type) {
+      case "rect":
+        shape = new Rect(
+          s.startX + 20,
+          s.startY + 20,
+          s.endX + 20,
+          s.endY + 20,
+          s.strokeStyle,
+          s.lineWidth,
+        );
+        break;
+
+      case "circle":
+        shape = new Circle(
+          s.startX + 20,
+          s.startY + 20,
+          s.endX + 20,
+          s.endY + 20,
+          s.strokeStyle,
+          s.lineWidth,
+        );
+        break;
+
+      case "line":
+        shape = new Line(
+          s.startX + 20,
+          s.startY + 20,
+          s.endX + 20,
+          s.endY + 20,
+          s.strokeStyle,
+          s.lineWidth,
+        );
+        break;
+
+      case "arrow":
+        shape = new Arrow(
+          s.startX + 20,
+          s.startY + 20,
+          s.endX + 20,
+          s.endY + 20,
+          s.strokeStyle,
+          s.lineWidth,
+        );
+        break;
+
+      case "freedraw":
+        const fd = new FreeDraw(
+          s.points[0].x + 20,
+          s.points[0].y + 20,
+          s.strokeStyle,
+          s.lineWidth,
+        );
+        s.points
+          .slice(1)
+          .forEach((p: any) => fd.addPoint({ x: p.x + 20, y: p.y + 20 }));
+        shape = fd;
+        break;
+
+      case "text":
+        const t = new Text(
+          s.startX + 20,
+          s.startY + 20,
+          s.endX + 20,
+          s.endY + 20,
+          s.strokeStyle,
+          s.lineWidth,
+        );
+        t.text = s.text;
+        shape = t;
+        break;
+
+      case "ellipse":
+        shape = new Ellipse(
+          s.startX + 20,
+          s.startY + 20,
+          s.endX + 20,
+          s.endY + 20,
+          s.strokeStyle,
+          s.lineWidth,
+        );
+        break;
+
+      case "triangle":
+        shape = new Triangle(
+          s.startX + 20,
+          s.startY + 20,
+          s.endX + 20,
+          s.endY + 20,
+          s.strokeStyle,
+          s.lineWidth,
+        );
+        break;
+
+      case "pentagon":
+        shape = new Polygon(
+          5,
+          s.startX + 20,
+          s.startY + 20,
+          s.endX + 20,
+          s.endY + 20,
+          s.strokeStyle,
+          s.lineWidth,
+        );
+        break;
+
+      case "hexagon":
+        shape = new Polygon(
+          6,
+          s.startX + 20,
+          s.startY + 20,
+          s.endX + 20,
+          s.endY + 20,
+          s.strokeStyle,
+          s.lineWidth,
+        );
+        break;
+
+      case "parallelogram":
+        shape = new Parallelogram(
+          s.startX + 20,
+          s.startY + 20,
+          s.endX + 20,
+          s.endY + 20,
+          s.strokeStyle,
+          s.lineWidth,
+        );
+        break;
+
+      case "icon":
+        shape = new Icon(
+          s.startX + 20,
+          s.startY + 20,
+          s.endX + 20,
+          s.endY + 20,
+          s.strokeStyle,
+          s.lineWidth,
+          s.path,
+        );
+        break;
+
+      case "code":
+        const c = new Code(
+          s.startX + 20,
+          s.startY + 20,
+          s.endX + 20,
+          s.endY + 20,
+          s.strokeStyle,
+          s.lineWidth,
+          s.text,
+        );
+        shape = c;
+        break;
+
+      default:
+        return;
+    }
+
+    this.shapes.push(shape);
+    this.setSelectShape(shape);
+    this.drawShapes();
+    this.saveShapes();
   }
 
   public download() {
@@ -1028,6 +1205,18 @@ export class CanvasDrawer {
     this.resizeCanvas();
   }
   private handleKeyDown(e: KeyboardEvent) {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "c") {
+      e.preventDefault();
+      this.copySelectedShape();
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "v") {
+      e.preventDefault();
+      this.pasteClipboardShape();
+      return;
+    }
+
     if (e.ctrlKey || e.metaKey) {
       if (e.key.toLowerCase() === "z") {
         e.preventDefault();
