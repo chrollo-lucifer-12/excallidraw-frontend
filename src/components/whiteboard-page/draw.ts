@@ -100,6 +100,9 @@ export class CanvasDrawer {
     startAngle: number;
     initialRotation: number;
   } | null = null;
+  private history: string[] = [];
+  private historyIndex: number = -1;
+  private readonly MAX_HISTORY = 100;
 
   constructor(public canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext("2d");
@@ -135,6 +138,169 @@ export class CanvasDrawer {
     //     image: imageUrl,
     //   },
     // });
+  }
+
+  private snapshot() {
+    const serializable = this.shapes.map((s: any) => {
+      if (s.type === "freedraw") {
+        return { ...s, points: s.points };
+      }
+      if (s.type === "text" || s.type === "code") {
+        return { ...s, text: s.text };
+      }
+      return { ...s };
+    });
+
+    const snapshot = JSON.stringify(serializable);
+
+    this.history = this.history.slice(0, this.historyIndex + 1);
+
+    this.history.push(snapshot);
+
+    if (this.history.length > this.MAX_HISTORY) {
+      this.history.shift();
+    } else {
+      this.historyIndex++;
+    }
+  }
+
+  private restore(snapshot: string) {
+    const parsed = JSON.parse(snapshot);
+
+    this.shapes = parsed.map((s: any) => {
+      switch (s.type) {
+        case "rect":
+          return new Rect(
+            s.startX,
+            s.startY,
+            s.endX,
+            s.endY,
+            s.strokeStyle,
+            s.lineWidth,
+          );
+        case "circle":
+          return new Circle(
+            s.startX,
+            s.startY,
+            s.endX,
+            s.endY,
+            s.strokeStyle,
+            s.lineWidth,
+          );
+        case "line":
+          return new Line(
+            s.startX,
+            s.startY,
+            s.endX,
+            s.endY,
+            s.strokeStyle,
+            s.lineWidth,
+          );
+        case "arrow":
+          return new Arrow(
+            s.startX,
+            s.startY,
+            s.endX,
+            s.endY,
+            s.strokeStyle,
+            s.lineWidth,
+          );
+        case "ellipse":
+          return new Ellipse(
+            s.startX,
+            s.startY,
+            s.endX,
+            s.endY,
+            s.strokeStyle,
+            s.lineWidth,
+          );
+        case "triangle":
+          return new Triangle(
+            s.startX,
+            s.startY,
+            s.endX,
+            s.endY,
+            s.strokeStyle,
+            s.lineWidth,
+          );
+        case "parallelogram":
+          return new Parallelogram(
+            s.startX,
+            s.startY,
+            s.endX,
+            s.endY,
+            s.strokeStyle,
+            s.lineWidth,
+          );
+        case "polygon":
+          return new Polygon(
+            s.sides,
+            s.startX,
+            s.startY,
+            s.endX,
+            s.endY,
+            s.strokeStyle,
+            s.lineWidth,
+          );
+        case "freedraw":
+          const fd = new FreeDraw(
+            s.points[0].x,
+            s.points[0].y,
+            s.strokeStyle,
+            s.lineWidth,
+          );
+          s.points.slice(1).forEach((p: any) => fd.addPoint(p));
+          return fd;
+        case "text":
+          const t = new Text(
+            s.startX,
+            s.startY,
+            s.endX,
+            s.endY,
+            s.strokeStyle,
+            s.lineWidth,
+          );
+          t.text = s.text;
+          return t;
+        case "icon":
+          return new Icon(
+            s.startX,
+            s.startY,
+            s.endX,
+            s.endY,
+            s.strokeStyle,
+            s.lineWidth,
+            s.path,
+          );
+        case "code":
+          const c = new Code(
+            s.startX,
+            s.startY,
+            s.endX,
+            s.endY,
+            s.strokeStyle,
+            s.lineWidth,
+          );
+          c.text = s.text;
+          return c;
+        default:
+          return new NullShape(0, 0, 0, 0);
+      }
+    });
+
+    this.drawShapes();
+  }
+
+  public undo() {
+    if (this.historyIndex <= 0) return;
+    this.historyIndex--;
+    this.restore(this.history[this.historyIndex]);
+  }
+
+  public redo() {
+    if (this.historyIndex >= this.history.length - 1) return;
+    this.historyIndex++;
+    this.restore(this.history[this.historyIndex]);
   }
 
   public setIconPath(path: string) {
@@ -476,6 +642,7 @@ export class CanvasDrawer {
     const endX = (e.clientX - rect.left - this.panX) / this.zoomX;
     const endY = (e.clientY - rect.top - this.panY) / this.zoomY;
     if (this.rotating) {
+      this.snapshot();
       this.rotating = null;
       this.clicked = false;
       this.saveShapes();
@@ -484,6 +651,7 @@ export class CanvasDrawer {
     }
 
     if (this.resizing) {
+      this.snapshot();
       this.resizing = null;
       this.saveShapes();
       this.canvas.style.cursor = "pointer";
@@ -506,8 +674,14 @@ export class CanvasDrawer {
         this.awsIcon,
       );
       this.shapes.push(shape);
+      this.snapshot();
+      this.saveShapes();
     }
     this.saveShapes();
+    if (this.draggingShape) {
+      this.snapshot();
+      this.draggingShape = null;
+    }
     this.clicked = false;
     this.currentFreeDraw = null;
     this.drawShapes();
@@ -629,6 +803,7 @@ export class CanvasDrawer {
       return;
     }
     if (this.currentMode === "eraser") {
+      let erased = false;
       for (let i = this.shapes.length - 1; i >= 0; i--) {
         const shape = this.shapes[i];
         const ex = rawX;
@@ -643,10 +818,14 @@ export class CanvasDrawer {
             ));
         if (inEraser) {
           this.shapes.splice(i, 1);
+          erased = true;
         }
       }
+      if (erased) {
+        this.snapshot();
+        this.saveShapes();
+      }
       this.drawShapes();
-      this.saveShapes();
     }
   }
 
@@ -849,6 +1028,20 @@ export class CanvasDrawer {
     this.resizeCanvas();
   }
   private handleKeyDown(e: KeyboardEvent) {
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        this.undo();
+        return;
+      }
+
+      if (e.key.toLowerCase() === "y") {
+        e.preventDefault();
+        this.redo();
+        return;
+      }
+    }
+
     if (e.key === "+") {
       const centerX = this.canvas.width / 2 - this.panX;
       const centerY = this.canvas.height / 2 - this.panY;
@@ -874,11 +1067,11 @@ export class CanvasDrawer {
     if (!this.selectedTextBox) return;
     if (e.key === "Backspace") {
       this.selectedTextBox.removeChar();
-      this.drawShapes();
     } else if (e.key.length === 1) {
       this.selectedTextBox.addChar(e.key);
-      this.drawShapes();
     }
+    this.drawShapes();
+    this.snapshot();
     this.saveShapes();
   }
   private handleWheel(e: WheelEvent) {
