@@ -87,6 +87,13 @@ export class CanvasDrawer {
   private awsIcon: string | null = null;
   private readonly handleSize = 8; // px
   private readonly handleColor = "#3b82f6";
+  private resizing: {
+    shape: IShape;
+    corner: string;
+    startX: number;
+    startY: number;
+    orig: any;
+  } | null = null;
 
   constructor(public canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext("2d");
@@ -114,14 +121,14 @@ export class CanvasDrawer {
     let imageDataUrl = this.canvas.toDataURL("image/png");
     // upload to s3
     let imageUrl = "";
-    prisma.whiteBoard.update({
-      where: {
-        slug: this.getSlug(),
-      },
-      data: {
-        image: imageUrl,
-      },
-    });
+    // prisma.whiteBoard.update({
+    //   where: {
+    //     slug: this.getSlug(),
+    //   },
+    //   data: {
+    //     image: imageUrl,
+    //   },
+    // });
   }
 
   public setIconPath(path: string) {
@@ -245,17 +252,22 @@ export class CanvasDrawer {
       "endX" in shape &&
       "endY" in shape
     ) {
-      const minX = Math.min((shape as any).startX, (shape as any).endX);
-      const minY = Math.min((shape as any).startY, (shape as any).endY);
-      const w = Math.abs((shape as any).endX - (shape as any).startX);
-      const h = Math.abs((shape as any).endY - (shape as any).startY);
+      const minX = Math.min(shape.startX, shape.endX);
+      const minY = Math.min(shape.startY, shape.endY);
+      const maxX = Math.max(shape.startX, shape.endX);
+      const maxY = Math.max(shape.startY, shape.endY);
 
+      const w = maxX - minX,
+        h = maxY - minY;
+
+      const ctx = this.ctx;
       ctx.save();
       ctx.strokeStyle = "#3b82f6";
       ctx.lineWidth = 1 / this.zoomX;
       ctx.setLineDash([6, 6]);
-      ctx.strokeRect(minX, minY, w, h);
+      ctx.strokeRect(shape.startX, shape.startY, w, h);
       ctx.restore();
+
       return;
     }
 
@@ -319,6 +331,31 @@ export class CanvasDrawer {
       this.panStartY = e.clientY - this.panY;
       return;
     }
+    if (this.selectShape) {
+      const handles = this.getSelectionHandles(this.selectShape);
+      for (const h of handles) {
+        const size = h.size;
+        if (
+          x >= h.x - size / 2 &&
+          x <= h.x + size / 2 &&
+          y >= h.y - size / 2 &&
+          y <= h.y + size / 2
+        ) {
+          this.resizing = {
+            shape: this.selectShape,
+            corner: h.corner,
+            startX: x,
+            startY: y,
+            orig: { ...(this.selectShape as any) },
+          };
+          this.draggingShape = null;
+          this.clicked = true;
+          this.canvas.style.cursor = h.cursor;
+          return;
+        }
+      }
+      return;
+    }
     if (this.currentMode == "text") {
       const textBox = new Text(
         x,
@@ -366,10 +403,18 @@ export class CanvasDrawer {
       }
     }
   }
+
   private handleMouseUp(e: MouseEvent) {
     const rect = this.canvas.getBoundingClientRect();
     const endX = (e.clientX - rect.left - this.panX) / this.zoomX;
     const endY = (e.clientY - rect.top - this.panY) / this.zoomY;
+    if (this.resizing) {
+      this.resizing = null;
+      this.saveShapes();
+      this.canvas.style.cursor = "pointer";
+      return;
+    }
+
     if (this.isPanning) {
       this.isPanning = false;
       return;
@@ -392,10 +437,52 @@ export class CanvasDrawer {
     this.currentFreeDraw = null;
     this.drawShapes();
   }
+
   private handleMouseMove(e: MouseEvent) {
     const rect = this.canvas.getBoundingClientRect();
     const rawX = (e.clientX - rect.left - this.panX) / this.zoomX;
     const rawY = (e.clientY - rect.top - this.panY) / this.zoomY;
+    if (this.resizing) {
+      const { shape, corner, startX, startY, orig } = this.resizing;
+      const dx = rawX - startX;
+      const dy = rawY - startY;
+
+      const s = shape as any;
+
+      switch (corner) {
+        case "tl":
+          s.startX = orig.startX + dx;
+          s.startY = orig.startY + dy;
+          break;
+        case "tr":
+          s.endX = orig.endX + dx;
+          s.startY = orig.startY + dy;
+          break;
+        case "bl":
+          s.startX = orig.startX + dx;
+          s.endY = orig.endY + dy;
+          break;
+        case "br":
+          s.endX = orig.endX + dx;
+          s.endY = orig.endY + dy;
+          break;
+        case "tm":
+          s.startY = orig.startY + dy;
+          break;
+        case "bm":
+          s.endY = orig.endY + dy;
+          break;
+        case "ml":
+          s.startX = orig.startX + dx;
+          break;
+        case "mr":
+          s.endX = orig.endX + dx;
+          break;
+      }
+
+      this.drawShapes();
+      return;
+    }
     if (this.isPanning) {
       this.panX = e.clientX - this.panStartX;
       this.panY = e.clientY - this.panStartY;
@@ -476,6 +563,7 @@ export class CanvasDrawer {
       this.saveShapes();
     }
   }
+
   private drawResizeHandles(shape: IShape) {
     const ctx = this.ctx;
     const handles = this.getSelectionHandles(shape);
@@ -522,148 +610,148 @@ export class CanvasDrawer {
     });
     const serializableStr = JSON.stringify(serializable);
     this.download();
-    await prisma.whiteBoard.update({
-      where: { slug: this.getSlug() },
-      data: serializableStr,
-    });
+    // await prisma.whiteBoard.update({
+    //   where: { slug: this.getSlug() },
+    //   data: serializableStr,
+    // });
   }
   private async loadShapes() {
-    const data = await prisma.whiteBoard.findUnique({
-      where: { slug: this.getSlug() },
-      select: { data: true },
-    });
-    if (!data) return;
-    const parsed = JSON.parse(data);
-    this.shapes = parsed.map((s: any) => {
-      switch (s.type) {
-        case "rect":
-          return new Rect(
-            s.startX,
-            s.startY,
-            s.endX,
-            s.endY,
-            s.strokeStyle,
-            s.lineWidth,
-          );
-        case "circle":
-          return new Circle(
-            s.startX,
-            s.startY,
-            s.endX,
-            s.endY,
-            s.strokeStyle,
-            s.lineWidth,
-          );
-        case "line":
-          return new Line(
-            s.startX,
-            s.startY,
-            s.endX,
-            s.endY,
-            s.strokeStyle,
-            s.lineWidth,
-          );
-        case "freedraw":
-          const fd = new FreeDraw(
-            s.points[0].x,
-            s.points[0].y,
-            s.strokeStyle,
-            s.lineWidth,
-          );
-          s.points.slice(1).forEach((p: any) => fd.addPoint(p));
-          return fd;
-        case "arrow":
-          return new Arrow(
-            s.startX,
-            s.startY,
-            s.endX,
-            s.endY,
-            s.strokeStyle,
-            s.lineWidth,
-          );
-        case "text":
-          const t = new Text(
-            s.startX,
-            s.startY,
-            s.endX,
-            s.endY,
-            s.strokeStyle,
-            s.lineWidth,
-          );
-          t.text = s.text;
-          return t;
-        case "ellipse":
-          return new Ellipse(
-            s.startX,
-            s.startY,
-            s.endX,
-            s.endY,
-            s.strokeStyle,
-            s.lineWidth,
-          );
-        case "triangle":
-          return new Triangle(
-            s.startX,
-            s.startY,
-            s.endX,
-            s.endY,
-            s.strokeStyle,
-            s.lineWidth,
-          );
-        case "pentagon":
-          return new Polygon(
-            5,
-            s.startX,
-            s.startY,
-            s.endX,
-            s.endY,
-            s.strokeStyle,
-            s.lineWidth,
-          );
-        case "hexagon":
-          return new Polygon(
-            6,
-            s.startX,
-            s.startY,
-            s.endX,
-            s.endY,
-            s.strokeStyle,
-            s.lineWidth,
-          );
-        case "parallelogram":
-          return new Parallelogram(
-            s.startX,
-            s.startY,
-            s.endX,
-            s.endY,
-            s.strokeStyle,
-            s.lineWidth,
-          );
-        case "icon":
-          return new Icon(
-            s.startX,
-            s.startY,
-            s.endX,
-            s.endY,
-            s.strokeStyle,
-            s.lineWidth,
-            s.path,
-          );
-        case "code":
-          return new Code(
-            s.startX,
-            s.startY,
-            s.endX,
-            s.endY,
-            s.strokeStyle,
-            s.lineWidth,
-            s.text,
-          );
-        default:
-          return new NullShape(0, 0, 0, 0);
-      }
-    });
-    this.drawShapes();
+    // const data = await prisma.whiteBoard.findUnique({
+    //   where: { slug: this.getSlug() },
+    //   select: { data: true },
+    // });
+    // if (!data) return;
+    // const parsed = JSON.parse(data);
+    // this.shapes = parsed.map((s: any) => {
+    //   switch (s.type) {
+    //     case "rect":
+    //       return new Rect(
+    //         s.startX,
+    //         s.startY,
+    //         s.endX,
+    //         s.endY,
+    //         s.strokeStyle,
+    //         s.lineWidth,
+    //       );
+    //     case "circle":
+    //       return new Circle(
+    //         s.startX,
+    //         s.startY,
+    //         s.endX,
+    //         s.endY,
+    //         s.strokeStyle,
+    //         s.lineWidth,
+    //       );
+    //     case "line":
+    //       return new Line(
+    //         s.startX,
+    //         s.startY,
+    //         s.endX,
+    //         s.endY,
+    //         s.strokeStyle,
+    //         s.lineWidth,
+    //       );
+    //     case "freedraw":
+    //       const fd = new FreeDraw(
+    //         s.points[0].x,
+    //         s.points[0].y,
+    //         s.strokeStyle,
+    //         s.lineWidth,
+    //       );
+    //       s.points.slice(1).forEach((p: any) => fd.addPoint(p));
+    //       return fd;
+    //     case "arrow":
+    //       return new Arrow(
+    //         s.startX,
+    //         s.startY,
+    //         s.endX,
+    //         s.endY,
+    //         s.strokeStyle,
+    //         s.lineWidth,
+    //       );
+    //     case "text":
+    //       const t = new Text(
+    //         s.startX,
+    //         s.startY,
+    //         s.endX,
+    //         s.endY,
+    //         s.strokeStyle,
+    //         s.lineWidth,
+    //       );
+    //       t.text = s.text;
+    //       return t;
+    //     case "ellipse":
+    //       return new Ellipse(
+    //         s.startX,
+    //         s.startY,
+    //         s.endX,
+    //         s.endY,
+    //         s.strokeStyle,
+    //         s.lineWidth,
+    //       );
+    //     case "triangle":
+    //       return new Triangle(
+    //         s.startX,
+    //         s.startY,
+    //         s.endX,
+    //         s.endY,
+    //         s.strokeStyle,
+    //         s.lineWidth,
+    //       );
+    //     case "pentagon":
+    //       return new Polygon(
+    //         5,
+    //         s.startX,
+    //         s.startY,
+    //         s.endX,
+    //         s.endY,
+    //         s.strokeStyle,
+    //         s.lineWidth,
+    //       );
+    //     case "hexagon":
+    //       return new Polygon(
+    //         6,
+    //         s.startX,
+    //         s.startY,
+    //         s.endX,
+    //         s.endY,
+    //         s.strokeStyle,
+    //         s.lineWidth,
+    //       );
+    //     case "parallelogram":
+    //       return new Parallelogram(
+    //         s.startX,
+    //         s.startY,
+    //         s.endX,
+    //         s.endY,
+    //         s.strokeStyle,
+    //         s.lineWidth,
+    //       );
+    //     case "icon":
+    //       return new Icon(
+    //         s.startX,
+    //         s.startY,
+    //         s.endX,
+    //         s.endY,
+    //         s.strokeStyle,
+    //         s.lineWidth,
+    //         s.path,
+    //       );
+    //     case "code":
+    //       return new Code(
+    //         s.startX,
+    //         s.startY,
+    //         s.endX,
+    //         s.endY,
+    //         s.strokeStyle,
+    //         s.lineWidth,
+    //         s.text,
+    //       );
+    //     default:
+    //       return new NullShape(0, 0, 0, 0);
+    //   }
+    // });
+    // this.drawShapes();
   }
   public resizeCanvas() {
     this.canvas.width = this.canvas.offsetWidth || window.innerWidth;

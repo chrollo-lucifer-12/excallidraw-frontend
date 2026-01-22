@@ -5,8 +5,10 @@ import { FileText } from "lucide-react";
 import CreateWhiteboard from "./create-whiteboard";
 import { Whiteboard } from "@/lib/types";
 import { useOptimistic } from "react";
+import { useRouter } from "next/navigation";
 
 const DashboardPage = ({ whiteboards }: { whiteboards: Whiteboard[] }) => {
+  const router = useRouter();
   const [optimisticWhiteboards, updateWhiteboards] = useOptimistic<
     Whiteboard[],
     { type: "add" | "replace" | "remove"; payload: any }
@@ -45,15 +47,14 @@ const DashboardPage = ({ whiteboards }: { whiteboards: Whiteboard[] }) => {
           <div
             key={board.slug || board.name}
             className="p-4 rounded-2xl shadow-sm border"
+            onClick={() => {
+              router.push(`/whiteboard/${board.slug}`);
+            }}
           >
             <div className="flex items-center gap-3">
               <FileText className="w-5 h-5" />
               <h2 className="font-semibold">{board.name}</h2>
             </div>
-
-            <p className="text-sm text-muted-foreground mt-2">
-              Slug: {board.slug || "Generating..."}
-            </p>
           </div>
         ))}
       </div>

@@ -12,9 +12,9 @@ import {
 import { Button } from "../ui/button";
 import { Plus } from "lucide-react";
 import { Input } from "../ui/input";
-import { useOptimistic, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { createWhiteBoard } from "@/app/(protected)/_actions/create-whiteboard";
-import { Whiteboard } from "@/lib/types";
+
 const CreateWhiteboard = ({
   updateWhiteBoards,
 }: {

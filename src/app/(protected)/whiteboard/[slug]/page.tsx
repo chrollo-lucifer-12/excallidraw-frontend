@@ -18,7 +18,7 @@ const Page = async ({ params }: WhiteboardPageProps) => {
     redirect("/auth/sign-in");
   }
 
-  const userId = session.user.userId;
+  const userId = session.user.id;
 
   const whiteboard = await prisma.whiteBoard.findUnique({
     where: {

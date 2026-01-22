@@ -4,6 +4,7 @@ import { secureRandomSlug } from "@/app/util/utils";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { whiteBoardSchema } from "@/lib/schemas";
+import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
 export const createWhiteBoard = async (formData: FormData) => {
@@ -36,6 +37,8 @@ export const createWhiteBoard = async (formData: FormData) => {
         userId: session.user.id,
       },
     });
+
+    revalidatePath("/dashboard");
 
     return { success: true, data: whiteboard };
   } catch (err) {
