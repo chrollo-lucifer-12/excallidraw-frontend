@@ -710,6 +710,7 @@ export class CanvasDrawer {
       this.panStartY = e.clientY - this.panY;
       return;
     }
+
     if (this.selectShape && "startX" in this.selectShape) {
       const s = this.selectShape as any;
 
@@ -1037,7 +1038,9 @@ export class CanvasDrawer {
   }
 
   public getSlug(): string {
-    return "";
+    const path = window.location.pathname;
+    const parts = path.split("/").filter(Boolean);
+    return parts[parts.length - 1] || "";
   }
 
   public async saveShapes() {
@@ -1051,150 +1054,148 @@ export class CanvasDrawer {
       }
       return { ...s };
     });
-    const serializableStr = JSON.stringify(serializable);
-    this.download();
-    // await prisma.whiteBoard.update({
-    //   where: { slug: this.getSlug() },
-    //   data: serializableStr,
-    // });
+
+    await fetch(`/api/boards/${this.getSlug()}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(serializable),
+    });
   }
   private async loadShapes() {
-    // const data = await prisma.whiteBoard.findUnique({
-    //   where: { slug: this.getSlug() },
-    //   select: { data: true },
-    // });
-    // if (!data) return;
-    // const parsed = JSON.parse(data);
-    // this.shapes = parsed.map((s: any) => {
-    //   switch (s.type) {
-    //     case "rect":
-    //       return new Rect(
-    //         s.startX,
-    //         s.startY,
-    //         s.endX,
-    //         s.endY,
-    //         s.strokeStyle,
-    //         s.lineWidth,
-    //       );
-    //     case "circle":
-    //       return new Circle(
-    //         s.startX,
-    //         s.startY,
-    //         s.endX,
-    //         s.endY,
-    //         s.strokeStyle,
-    //         s.lineWidth,
-    //       );
-    //     case "line":
-    //       return new Line(
-    //         s.startX,
-    //         s.startY,
-    //         s.endX,
-    //         s.endY,
-    //         s.strokeStyle,
-    //         s.lineWidth,
-    //       );
-    //     case "freedraw":
-    //       const fd = new FreeDraw(
-    //         s.points[0].x,
-    //         s.points[0].y,
-    //         s.strokeStyle,
-    //         s.lineWidth,
-    //       );
-    //       s.points.slice(1).forEach((p: any) => fd.addPoint(p));
-    //       return fd;
-    //     case "arrow":
-    //       return new Arrow(
-    //         s.startX,
-    //         s.startY,
-    //         s.endX,
-    //         s.endY,
-    //         s.strokeStyle,
-    //         s.lineWidth,
-    //       );
-    //     case "text":
-    //       const t = new Text(
-    //         s.startX,
-    //         s.startY,
-    //         s.endX,
-    //         s.endY,
-    //         s.strokeStyle,
-    //         s.lineWidth,
-    //       );
-    //       t.text = s.text;
-    //       return t;
-    //     case "ellipse":
-    //       return new Ellipse(
-    //         s.startX,
-    //         s.startY,
-    //         s.endX,
-    //         s.endY,
-    //         s.strokeStyle,
-    //         s.lineWidth,
-    //       );
-    //     case "triangle":
-    //       return new Triangle(
-    //         s.startX,
-    //         s.startY,
-    //         s.endX,
-    //         s.endY,
-    //         s.strokeStyle,
-    //         s.lineWidth,
-    //       );
-    //     case "pentagon":
-    //       return new Polygon(
-    //         5,
-    //         s.startX,
-    //         s.startY,
-    //         s.endX,
-    //         s.endY,
-    //         s.strokeStyle,
-    //         s.lineWidth,
-    //       );
-    //     case "hexagon":
-    //       return new Polygon(
-    //         6,
-    //         s.startX,
-    //         s.startY,
-    //         s.endX,
-    //         s.endY,
-    //         s.strokeStyle,
-    //         s.lineWidth,
-    //       );
-    //     case "parallelogram":
-    //       return new Parallelogram(
-    //         s.startX,
-    //         s.startY,
-    //         s.endX,
-    //         s.endY,
-    //         s.strokeStyle,
-    //         s.lineWidth,
-    //       );
-    //     case "icon":
-    //       return new Icon(
-    //         s.startX,
-    //         s.startY,
-    //         s.endX,
-    //         s.endY,
-    //         s.strokeStyle,
-    //         s.lineWidth,
-    //         s.path,
-    //       );
-    //     case "code":
-    //       return new Code(
-    //         s.startX,
-    //         s.startY,
-    //         s.endX,
-    //         s.endY,
-    //         s.strokeStyle,
-    //         s.lineWidth,
-    //         s.text,
-    //       );
-    //     default:
-    //       return new NullShape(0, 0, 0, 0);
-    //   }
-    // });
-    // this.drawShapes();
+    const slug = this.getSlug();
+    console.log(slug);
+    try {
+      const res = await fetch(`/api/boards/${slug}`);
+      const parsed = await res.json();
+      let shapesFromDB = JSON.parse(parsed);
+
+      console.log(parsed);
+
+      this.shapes = shapesFromDB.map((s: any) => {
+        switch (s.type) {
+          case "rect":
+            return new Rect(
+              s.startX,
+              s.startY,
+              s.endX,
+              s.endY,
+              s.strokeStyle,
+              s.lineWidth,
+            );
+          case "circle":
+            return new Circle(
+              s.startX,
+              s.startY,
+              s.endX,
+              s.endY,
+              s.strokeStyle,
+              s.lineWidth,
+            );
+          case "line":
+            return new Line(
+              s.startX,
+              s.startY,
+              s.endX,
+              s.endY,
+              s.strokeStyle,
+              s.lineWidth,
+            );
+          case "arrow":
+            return new Arrow(
+              s.startX,
+              s.startY,
+              s.endX,
+              s.endY,
+              s.strokeStyle,
+              s.lineWidth,
+            );
+          case "ellipse":
+            return new Ellipse(
+              s.startX,
+              s.startY,
+              s.endX,
+              s.endY,
+              s.strokeStyle,
+              s.lineWidth,
+            );
+          case "triangle":
+            return new Triangle(
+              s.startX,
+              s.startY,
+              s.endX,
+              s.endY,
+              s.strokeStyle,
+              s.lineWidth,
+            );
+          case "parallelogram":
+            return new Parallelogram(
+              s.startX,
+              s.startY,
+              s.endX,
+              s.endY,
+              s.strokeStyle,
+              s.lineWidth,
+            );
+          case "polygon":
+            return new Polygon(
+              s.sides,
+              s.startX,
+              s.startY,
+              s.endX,
+              s.endY,
+              s.strokeStyle,
+              s.lineWidth,
+            );
+          case "freedraw":
+            const fd = new FreeDraw(
+              s.points[0].x,
+              s.points[0].y,
+              s.strokeStyle,
+              s.lineWidth,
+            );
+            s.points.slice(1).forEach((p: any) => fd.addPoint(p));
+            return fd;
+          case "text":
+            const t = new Text(
+              s.startX,
+              s.startY,
+              s.endX,
+              s.endY,
+              s.strokeStyle,
+              s.lineWidth,
+            );
+            t.text = s.text;
+            return t;
+          case "icon":
+            return new Icon(
+              s.startX,
+              s.startY,
+              s.endX,
+              s.endY,
+              s.strokeStyle,
+              s.lineWidth,
+              s.path,
+            );
+          case "code":
+            const c = new Code(
+              s.startX,
+              s.startY,
+              s.endX,
+              s.endY,
+              s.strokeStyle,
+              s.lineWidth,
+            );
+            c.text = s.text;
+            return c;
+          default:
+            return new NullShape(0, 0, 0, 0);
+        }
+      });
+    } catch (err) {
+      console.log(err);
+    }
+
+    this.drawShapes();
   }
   public resizeCanvas() {
     this.canvas.width = this.canvas.offsetWidth || window.innerWidth;
