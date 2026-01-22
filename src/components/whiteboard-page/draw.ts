@@ -10,35 +10,8 @@ import { Triangle } from "./shapes/triangle";
 import { Parallelogram } from "./shapes/parallelogram";
 import { Icon } from "./shapes/icons";
 import { Code } from "./shapes/code";
-
-export interface IShape {
-  type: ShapeMode;
-  strokeStyle: string;
-  lineWidth: number;
-  draw(ctx: CanvasRenderingContext2D): void;
-  isInside(x: number, y: number): boolean;
-  fill: string;
-  opacity: number;
-  borderRadius: number;
-}
-
-export type ShapeMode =
-  | "code"
-  | "icon"
-  | "eraser"
-  | "parallelogram"
-  | "polygon"
-  | "hexagon"
-  | "pentagon"
-  | "triangle"
-  | "ellipse"
-  | "text"
-  | "arrow"
-  | "freedraw"
-  | "rect"
-  | "circle"
-  | "line"
-  | "none";
+import { IShape, ShapeMode, SpatialItem, Whiteboard } from "@/lib/types";
+import RBush from "rbush";
 
 class NullShape implements IShape {
   type: ShapeMode = "none";
@@ -50,6 +23,9 @@ class NullShape implements IShape {
   constructor(_sx: number, _sy: number, _ex: number, _ey: number) {}
   isInside(_x: number, _y: number) {
     return false;
+  }
+  getBounds() {
+    return { x: 0, y: 0, w: 0, h: 0 };
   }
   draw(_ctx: CanvasRenderingContext2D) {}
 }
@@ -70,6 +46,7 @@ export class CanvasDrawer {
       ) => IShape)
     | any = Rect;
   private currentFreeDraw: FreeDraw | null = null;
+  public tree: RBush<SpatialItem> | null = null;
   private currentMode: ShapeMode = "none";
   private draggingShape: IShape | null = null;
   private dragOffsetX = 0;
@@ -127,13 +104,47 @@ export class CanvasDrawer {
     this.handleResize = this.handleResize.bind(this);
     this.handleWheel = this.handleWheel.bind(this);
     this.handleKeyDown = this.handleKeyDown.bind(this);
+    this.tree = new RBush<SpatialItem>();
     this.selectShape = null;
-    canvas.addEventListener("mousedown", this.handleMouseDown);
-    canvas.addEventListener("mouseup", this.handleMouseUp);
-    canvas.addEventListener("mousemove", this.handleMouseMove);
-    canvas.addEventListener("wheel", this.handleWheel, { passive: false });
+    this.canvas.addEventListener("mousedown", this.handleMouseDown);
+    window.addEventListener("mouseup", this.handleMouseUp);
+    window.addEventListener("mousemove", this.handleMouseMove);
+    this.canvas.addEventListener("wheel", this.handleWheel, { passive: false });
     window.addEventListener("resize", this.handleResize);
     window.addEventListener("keydown", this.handleKeyDown);
+  }
+
+  insertShape(shape: IShape) {
+    if (shape.getBounds) {
+      const b = shape.getBounds();
+
+      const item: SpatialItem = {
+        minX: b.x,
+        minY: b.y,
+        maxX: b.x + b.w,
+        maxY: b.y + b.h,
+        shape,
+      };
+      shape.rbushItem = item;
+      this.tree?.insert(item);
+    }
+  }
+
+  updateShapeInTree(shape: IShape) {
+    if (!shape.rbushItem) return;
+
+    this.tree?.remove(shape.rbushItem, (a, b) => a.shape === b.shape);
+
+    const b = shape.getBounds();
+    const item: SpatialItem = {
+      minX: b.x,
+      minY: b.y,
+      maxX: b.x + b.w,
+      maxY: b.y + b.h,
+      shape,
+    };
+    shape.rbushItem = item;
+    this.tree?.insert(item);
   }
 
   copySelectedShape() {
@@ -365,7 +376,8 @@ export class CanvasDrawer {
       if (s.type === "text" || s.type === "code") {
         return { ...s, text: s.text };
       }
-      return { ...s };
+      const { rbushItem, ...rest } = s;
+      return rest;
     });
 
     const snapshot = JSON.stringify(serializable);
@@ -529,6 +541,9 @@ export class CanvasDrawer {
           return new NullShape(0, 0, 0, 0);
       }
     });
+
+    this.tree?.clear();
+    this.shapes.forEach((s) => this.insertShape(s));
 
     this.drawShapes();
   }
@@ -797,15 +812,50 @@ export class CanvasDrawer {
     const x = (e.clientX - rect.left - this.panX) / this.zoomX;
     const y = (e.clientY - rect.top - this.panY) / this.zoomY;
 
-    if (
-      e.button === 1 ||
-      (e.button === 0 && !this.selectShape && this.currentMode === "none")
-    ) {
+    if (e.button === 2) {
       this.isPanning = true;
       this.panStartX = e.clientX - this.panX;
       this.panStartY = e.clientY - this.panY;
       this.canvas.style.cursor = "grabbing";
       return;
+    }
+
+    if (this.currentMode === "none") {
+      console.log("mode is none");
+      let foundShape = false;
+      const candidates = this.tree?.search({
+        minX: x,
+        minY: y,
+        maxX: x,
+        maxY: y,
+      });
+      console.log(candidates);
+      if (candidates) {
+        for (let i = candidates.length - 1; i >= 0; i--) {
+          const shape = candidates[i].shape;
+          if (shape.isInside(x, y)) {
+            this.draggingShape = shape;
+            this.setSelectShape(shape);
+            this.dragOffsetX = x;
+            this.dragOffsetY = y;
+            this.clicked = true;
+            this.canvas.style.cursor = "move";
+
+            if (shape.type === "text") {
+              this.selectedTextBox = shape as Text;
+              this.selectedTextBox.showCursor = true;
+            }
+            foundShape = true;
+            break;
+          }
+        }
+      }
+
+      if (!foundShape) {
+        this.setSelectShape(null);
+        this.selectedTextBox = null;
+        this.drawShapes();
+      }
     }
 
     if (this.selectShape && "startX" in this.selectShape) {
@@ -908,40 +958,18 @@ export class CanvasDrawer {
       }
       return;
     }
-
-    if (this.currentMode === "none") {
-      let foundShape = false;
-      for (let i = this.shapes.length - 1; i >= 0; i--) {
-        const shape = this.shapes[i];
-        if (shape.isInside(x, y, this.ctx)) {
-          this.draggingShape = shape;
-          this.setSelectShape(shape);
-          this.dragOffsetX = x;
-          this.dragOffsetY = y;
-          this.clicked = true;
-          this.canvas.style.cursor = "move";
-
-          if (shape.type === "text") {
-            this.selectedTextBox = shape as Text;
-            this.selectedTextBox.showCursor = true;
-          }
-          foundShape = true;
-          break;
-        }
-      }
-
-      if (!foundShape) {
-        this.setSelectShape(null);
-        this.selectedTextBox = null;
-        this.drawShapes();
-      }
-    }
   }
 
   private handleMouseUp(e: MouseEvent) {
     const rect = this.canvas.getBoundingClientRect();
     const endX = (e.clientX - rect.left - this.panX) / this.zoomX;
     const endY = (e.clientY - rect.top - this.panY) / this.zoomY;
+    if (this.draggingShape) {
+      this.snapshot();
+      this.draggingShape = null;
+      this.selectShape = null;
+      this.canvas.style.cursor = "pointer";
+    }
     if (this.rotating) {
       this.snapshot();
       this.rotating = null;
@@ -996,10 +1024,7 @@ export class CanvasDrawer {
       this.saveShapes();
     }
     this.saveShapes();
-    if (this.draggingShape) {
-      this.snapshot();
-      this.draggingShape = null;
-    }
+
     this.clicked = false;
     this.currentFreeDraw = null;
     this.drawShapes();
@@ -1070,6 +1095,7 @@ export class CanvasDrawer {
         this.rotating;
       const angle = Math.atan2(y - centerY, x - centerX);
       (shape as any).rotation = initialRotation + (angle - startAngle);
+      this.updateShapeInTree(shape);
       this.drawShapes();
       return;
     }
@@ -1110,6 +1136,7 @@ export class CanvasDrawer {
           s.endX = orig.endX + dx;
           break;
       }
+      this.updateShapeInTree(shape);
       this.drawShapes();
       return;
     }
@@ -1139,6 +1166,7 @@ export class CanvasDrawer {
 
       this.dragOffsetX = x;
       this.dragOffsetY = y;
+      this.updateShapeInTree(this.draggingShape);
       this.drawShapes();
       return;
     }
@@ -1185,6 +1213,7 @@ export class CanvasDrawer {
             ));
 
         if (inEraser) {
+          this.tree?.remove(shape.rbushItem!, (a, b) => a.shape === b.shape);
           this.shapes.splice(i, 1);
           erased = true;
         }
@@ -1243,7 +1272,8 @@ export class CanvasDrawer {
         const fd = s as FreeDraw;
         return { ...fd, points: fd.points };
       }
-      return { ...s };
+      const { rbushItem, ...rest } = s as any;
+      return rest;
     });
 
     await fetch(`/api/boards/${this.getSlug()}`, {
@@ -1406,6 +1436,10 @@ export class CanvasDrawer {
             return new NullShape(0, 0, 0, 0);
         }
       });
+
+      this.tree?.clear();
+      this.shapes.forEach((s) => this.insertShape(s));
+      console.log("all shapes", this.tree?.all());
     } catch (err) {
       console.log(err);
     }
@@ -1506,8 +1540,8 @@ export class CanvasDrawer {
 
   destroy() {
     this.canvas.removeEventListener("mousedown", this.handleMouseDown);
-    this.canvas.removeEventListener("mouseup", this.handleMouseUp);
-    this.canvas.removeEventListener("mousemove", this.handleMouseMove);
+    window.removeEventListener("mouseup", this.handleMouseUp);
+    window.removeEventListener("mousemove", this.handleMouseMove);
     this.canvas.removeEventListener("wheel", this.handleWheel);
     window.removeEventListener("resize", this.handleResize);
     window.removeEventListener("keydown", this.handleKeyDown);

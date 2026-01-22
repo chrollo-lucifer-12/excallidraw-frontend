@@ -1,4 +1,4 @@
-import { IShape, ShapeMode } from "../draw";
+import { IShape, ShapeMode } from "@/lib/types";
 
 export class Icon implements IShape {
   type: ShapeMode = "icon";
@@ -11,6 +11,15 @@ export class Icon implements IShape {
     public lineWidth: number,
     public path: string,
   ) {}
+
+  getBounds() {
+    return {
+      x: Math.min(this.startX, this.endX),
+      y: Math.min(this.startY, this.endY),
+      w: Math.abs(this.endX - this.startX),
+      h: Math.abs(this.endY - this.startY),
+    };
+  }
 
   isInside(x: number, y: number) {
     const minX = Math.min(this.startX, this.endX);

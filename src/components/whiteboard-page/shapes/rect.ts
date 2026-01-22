@@ -1,4 +1,4 @@
-import { IShape, ShapeMode } from "../draw";
+import { IShape, ShapeMode } from "@/lib/types";
 
 export class Rect implements IShape {
   type: ShapeMode = "rect";
@@ -14,6 +14,15 @@ export class Rect implements IShape {
     public opacity: number,
     public borderRadius: number,
   ) {}
+
+  getBounds() {
+    return {
+      x: Math.min(this.startX, this.endX),
+      y: Math.min(this.startY, this.endY),
+      w: Math.abs(this.endX - this.startX),
+      h: Math.abs(this.endY - this.startY),
+    };
+  }
 
   isInside(x: number, y: number) {
     const minX = Math.min(this.startX, this.endX);

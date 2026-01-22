@@ -1,4 +1,4 @@
-import { IShape, ShapeMode } from "../draw";
+import { IShape, ShapeMode } from "@/lib/types";
 
 export class Polygon implements IShape {
   type: ShapeMode;
@@ -19,6 +19,15 @@ export class Polygon implements IShape {
   ) {
     this.sides = sides;
     this.type = sides === 5 ? "pentagon" : sides === 6 ? "hexagon" : "polygon";
+  }
+
+  getBounds() {
+    return {
+      x: Math.min(this.startX, this.endX),
+      y: Math.min(this.startY, this.endY),
+      w: Math.abs(this.endX - this.startX),
+      h: Math.abs(this.endY - this.startY),
+    };
   }
 
   isInside(x: number, y: number) {

@@ -1,4 +1,4 @@
-import { IShape, ShapeMode } from "../draw";
+import { IShape, ShapeMode } from "@/lib/types";
 
 export class Circle implements IShape {
   type: ShapeMode = "circle";
@@ -22,6 +22,15 @@ export class Circle implements IShape {
     const dx = x - this.startX;
     const dy = y - this.startY;
     return dx * dx + dy * dy <= radius * radius;
+  }
+
+  getBounds() {
+    return {
+      x: Math.min(this.startX, this.endX),
+      y: Math.min(this.startY, this.endY),
+      w: Math.abs(this.endX - this.startX),
+      h: Math.abs(this.endY - this.startY),
+    };
   }
 
   draw(ctx: CanvasRenderingContext2D) {

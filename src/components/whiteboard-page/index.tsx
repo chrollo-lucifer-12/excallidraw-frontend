@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { CanvasDrawer, IShape } from "./draw";
+import { CanvasDrawer } from "./draw";
 import { AppSidebar } from "./app-sidebar";
 import { Button } from "../ui/button";
+import { IShape } from "@/lib/types";
 
 const WhiteboardPage = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);

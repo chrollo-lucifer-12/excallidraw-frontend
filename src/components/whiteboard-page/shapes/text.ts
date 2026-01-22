@@ -1,5 +1,4 @@
-import { IShape, ShapeMode } from "../draw";
-
+import { IShape, ShapeMode } from "@/lib/types";
 export class Text implements IShape {
   type: ShapeMode = "text";
   text: string = "type something...";
@@ -15,6 +14,15 @@ export class Text implements IShape {
     public strokeStyle: string,
     public lineWidth: number,
   ) {}
+
+  getBounds() {
+    return {
+      x: Math.min(this.startX, this.endX),
+      y: Math.min(this.startY, this.endY),
+      w: Math.abs(this.endX - this.startX),
+      h: Math.abs(this.endY - this.startY),
+    };
+  }
 
   isInside(x: number, y: number, ctx?: CanvasRenderingContext2D) {
     if (!ctx) return false;

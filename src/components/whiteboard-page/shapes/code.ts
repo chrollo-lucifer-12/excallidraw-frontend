@@ -1,5 +1,4 @@
-import { IShape, ShapeMode } from "../draw";
-
+import { IShape, ShapeMode } from "@/lib/types";
 export class Code implements IShape {
   type: ShapeMode = "code";
   public pre: HTMLPreElement;
@@ -33,6 +32,15 @@ export class Code implements IShape {
     this.code = document.createElement("code");
     this.setupElement();
     this.setupDragAndResize();
+  }
+
+  getBounds() {
+    return {
+      x: Math.min(this.startX, this.endX),
+      y: Math.min(this.startY, this.endY),
+      w: Math.abs(this.endX - this.startX),
+      h: Math.abs(this.endY - this.startY),
+    };
   }
 
   private setupElement() {

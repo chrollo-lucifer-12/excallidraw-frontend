@@ -1,4 +1,4 @@
-import { IShape, ShapeMode } from "../draw";
+import { IShape, ShapeMode } from "@/lib/types";
 
 export class Triangle implements IShape {
   type: ShapeMode = "triangle";
@@ -15,6 +15,15 @@ export class Triangle implements IShape {
     public opacity: number,
     public borderRadius: number,
   ) {}
+
+  getBounds() {
+    return {
+      x: Math.min(this.startX, this.endX),
+      y: Math.min(this.startY, this.endY),
+      w: Math.abs(this.endX - this.startX),
+      h: Math.abs(this.endY - this.startY),
+    };
+  }
 
   isInside(x: number, y: number) {
     const topX = this.startX;

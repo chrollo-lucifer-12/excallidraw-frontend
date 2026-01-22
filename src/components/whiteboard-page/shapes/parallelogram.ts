@@ -1,4 +1,4 @@
-import { IShape, ShapeMode } from "../draw";
+import { IShape, ShapeMode } from "@/lib/types";
 
 export class Parallelogram implements IShape {
   type: ShapeMode = "parallelogram";
@@ -21,6 +21,15 @@ export class Parallelogram implements IShape {
     const minY = Math.min(this.startY, this.endY);
     const maxY = Math.max(this.startY, this.endY);
     return x >= minX && x <= maxX && y >= minY && y <= maxY;
+  }
+
+  getBounds() {
+    return {
+      x: Math.min(this.startX, this.endX),
+      y: Math.min(this.startY, this.endY),
+      w: Math.abs(this.endX - this.startX),
+      h: Math.abs(this.endY - this.startY),
+    };
   }
 
   draw(ctx: CanvasRenderingContext2D) {

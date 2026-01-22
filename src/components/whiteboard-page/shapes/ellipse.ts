@@ -1,4 +1,4 @@
-import { IShape, ShapeMode } from "../draw";
+import { IShape, ShapeMode } from "@/lib/types";
 
 export class Ellipse implements IShape {
   type: ShapeMode = "ellipse";
@@ -21,6 +21,15 @@ export class Ellipse implements IShape {
     const cx = this.startX + rx;
     const cy = this.startY + ry;
     return (x - cx) ** 2 / rx ** 2 + (y - cy) ** 2 / ry ** 2 <= 1;
+  }
+
+  getBounds() {
+    return {
+      x: Math.min(this.startX, this.endX),
+      y: Math.min(this.startY, this.endY),
+      w: Math.abs(this.endX - this.startX),
+      h: Math.abs(this.endY - this.startY),
+    };
   }
 
   draw(ctx: CanvasRenderingContext2D) {
