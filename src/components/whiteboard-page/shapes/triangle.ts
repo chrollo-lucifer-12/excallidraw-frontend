@@ -11,6 +11,9 @@ export class Triangle implements IShape {
     public endY: number,
     public strokeStyle: string,
     public lineWidth: number,
+    public fill: string,
+    public opacity: number,
+    public borderRadius: number,
   ) {}
 
   isInside(x: number, y: number) {
@@ -46,16 +49,13 @@ export class Triangle implements IShape {
   }
 
   draw(ctx: CanvasRenderingContext2D) {
-    const cx = (this.startX + this.endX) / 2;
-    const cy = (this.startY + this.endY) / 2;
-
     ctx.save();
 
-    ctx.translate(cx, cy);
-    ctx.rotate(this.rotation);
-    ctx.translate(-cx, -cy);
+    ctx.globalAlpha = this.opacity;
     ctx.strokeStyle = this.strokeStyle;
     ctx.lineWidth = this.lineWidth;
+    ctx.fillStyle = this.fill;
+
     const topX = this.startX;
     const topY = this.startY;
     const bottomRightX = this.endX;
@@ -68,6 +68,10 @@ export class Triangle implements IShape {
     ctx.lineTo(bottomRightX, bottomRightY);
     ctx.lineTo(bottomLeftX, bottomLeftY);
     ctx.closePath();
+
+    ctx.fill();
     ctx.stroke();
+
+    ctx.restore();
   }
 }

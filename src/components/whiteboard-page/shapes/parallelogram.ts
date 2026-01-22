@@ -10,6 +10,9 @@ export class Parallelogram implements IShape {
     public endY: number,
     public strokeStyle: string,
     public lineWidth: number,
+    public fill: string,
+    public opacity: number,
+    public borderRadius: number,
   ) {}
 
   isInside(x: number, y: number) {
@@ -21,17 +24,11 @@ export class Parallelogram implements IShape {
   }
 
   draw(ctx: CanvasRenderingContext2D) {
-    const cx = (this.startX + this.endX) / 2;
-    const cy = (this.startY + this.endY) / 2;
-
     ctx.save();
-
-    ctx.translate(cx, cy);
-    ctx.rotate(this.rotation);
-    ctx.translate(-cx, -cy);
 
     ctx.strokeStyle = this.strokeStyle;
     ctx.lineWidth = this.lineWidth;
+    ctx.globalAlpha = this.opacity;
 
     const width = this.endX - this.startX;
     const height = this.endY - this.startY;
@@ -52,6 +49,14 @@ export class Parallelogram implements IShape {
     ctx.lineTo(bottomRightX, bottomRightY);
     ctx.lineTo(bottomLeftX, bottomLeftY);
     ctx.closePath();
+
+    if (this.fill) {
+      ctx.fillStyle = this.fill;
+      ctx.fill();
+    }
+
     ctx.stroke();
+
+    ctx.restore();
   }
 }

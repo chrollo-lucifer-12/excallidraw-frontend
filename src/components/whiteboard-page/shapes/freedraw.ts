@@ -9,6 +9,7 @@ export class FreeDraw implements IShape {
     sy: number,
     public strokeStyle: string,
     public lineWidth: number,
+    public opacity: number,
   ) {
     this.points.push({ x: sx, y: sy });
   }
@@ -37,13 +38,22 @@ export class FreeDraw implements IShape {
 
   draw(ctx: CanvasRenderingContext2D) {
     if (this.points.length === 0) return;
+
+    ctx.save();
+
     ctx.strokeStyle = this.strokeStyle;
     ctx.lineWidth = this.lineWidth;
+    ctx.globalAlpha = this.opacity;
+
     ctx.beginPath();
     ctx.moveTo(this.points[0].x, this.points[0].y);
+
     for (let i = 1; i < this.points.length; i++) {
       ctx.lineTo(this.points[i].x, this.points[i].y);
     }
+
     ctx.stroke();
+
+    ctx.restore();
   }
 }

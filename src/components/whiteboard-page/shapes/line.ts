@@ -10,6 +10,9 @@ export class Line implements IShape {
     public endY: number,
     public strokeStyle: string,
     public lineWidth: number,
+    public fill: string,
+    public opacity: number,
+    public borderRadius: number,
   ) {}
 
   isInside(x: number, y: number) {
@@ -27,19 +30,17 @@ export class Line implements IShape {
   }
 
   draw(ctx: CanvasRenderingContext2D) {
-    const cx = (this.startX + this.endX) / 2;
-    const cy = (this.startY + this.endY) / 2;
-
     ctx.save();
 
-    ctx.translate(cx, cy);
-    ctx.rotate(this.rotation);
-    ctx.translate(-cx, -cy);
     ctx.strokeStyle = this.strokeStyle;
     ctx.lineWidth = this.lineWidth;
+    ctx.globalAlpha = this.opacity;
+
     ctx.beginPath();
     ctx.moveTo(this.startX, this.startY);
     ctx.lineTo(this.endX, this.endY);
     ctx.stroke();
+
+    ctx.restore();
   }
 }

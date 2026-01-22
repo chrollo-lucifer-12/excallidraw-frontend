@@ -10,6 +10,9 @@ export class Circle implements IShape {
     public endY: number,
     public strokeStyle: string,
     public lineWidth: number,
+    public fill: string,
+    public opacity: number,
+    public borderRadius: number,
   ) {}
 
   isInside(x: number, y: number) {
@@ -22,21 +25,26 @@ export class Circle implements IShape {
   }
 
   draw(ctx: CanvasRenderingContext2D) {
-    const cx = (this.startX + this.endX) / 2;
-    const cy = (this.startY + this.endY) / 2;
-
     ctx.save();
 
-    ctx.translate(cx, cy);
-    ctx.rotate(this.rotation);
-    ctx.translate(-cx, -cy);
     const radius = Math.sqrt(
       (this.endX - this.startX) ** 2 + (this.endY - this.startY) ** 2,
     );
+
+    ctx.globalAlpha = this.opacity;
     ctx.strokeStyle = this.strokeStyle;
     ctx.lineWidth = this.lineWidth;
+
     ctx.beginPath();
-    ctx.arc(this.startX, this.startY, radius, 0, 2 * Math.PI);
+    ctx.arc(this.startX, this.startY, radius, 0, Math.PI * 2);
+
+    if (this.fill) {
+      ctx.fillStyle = this.fill;
+      ctx.fill();
+    }
+
     ctx.stroke();
+
+    ctx.restore();
   }
 }

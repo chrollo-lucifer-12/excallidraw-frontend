@@ -21,6 +21,9 @@ export class Code implements IShape {
     public endY: number,
     public strokeStyle: string,
     public lineWidth: number,
+    public fill: string,
+    public opacity: number,
+    public borderRadius: number,
     text: string,
   ) {
     this.text = text || "// Write your code here";

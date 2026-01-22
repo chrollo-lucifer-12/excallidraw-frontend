@@ -10,6 +10,9 @@ export class Arrow implements IShape {
     public endY: number,
     public strokeStyle: string,
     public lineWidth: number,
+    public fill: string,
+    public opacity: number,
+    public borderRadius: number,
   ) {}
 
   isInside(x: number, y: number) {
@@ -27,17 +30,14 @@ export class Arrow implements IShape {
   }
 
   draw(ctx: CanvasRenderingContext2D) {
-    const cx = (this.startX + this.endX) / 2;
-    const cy = (this.startY + this.endY) / 2;
-
     ctx.save();
 
-    ctx.translate(cx, cy);
-    ctx.rotate(this.rotation);
-    ctx.translate(-cx, -cy);
     const headLength = 10;
+
     ctx.strokeStyle = this.strokeStyle;
     ctx.lineWidth = this.lineWidth;
+    ctx.globalAlpha = this.opacity;
+
     const angle = Math.atan2(this.endY - this.startY, this.endX - this.startX);
 
     ctx.beginPath();
@@ -45,20 +45,22 @@ export class Arrow implements IShape {
     ctx.lineTo(this.endX, this.endY);
     ctx.stroke();
 
-    const arrowLeftX = this.endX - headLength * Math.cos(angle - Math.PI / 6);
-    const arrowLeftY = this.endY - headLength * Math.sin(angle - Math.PI / 6);
+    ctx.beginPath();
+    ctx.moveTo(this.endX, this.endY);
+    ctx.lineTo(
+      this.endX - headLength * Math.cos(angle - Math.PI / 6),
+      this.endY - headLength * Math.sin(angle - Math.PI / 6),
+    );
+    ctx.stroke();
 
     ctx.beginPath();
     ctx.moveTo(this.endX, this.endY);
-    ctx.lineTo(arrowLeftX, arrowLeftY);
+    ctx.lineTo(
+      this.endX - headLength * Math.cos(angle + Math.PI / 6),
+      this.endY - headLength * Math.sin(angle + Math.PI / 6),
+    );
     ctx.stroke();
 
-    const arrowRightX = this.endX - headLength * Math.cos(angle + Math.PI / 6);
-    const arrowRightY = this.endY - headLength * Math.sin(angle + Math.PI / 6);
-
-    ctx.beginPath();
-    ctx.moveTo(this.endX, this.endY);
-    ctx.lineTo(arrowRightX, arrowRightY);
-    ctx.stroke();
+    ctx.restore();
   }
 }

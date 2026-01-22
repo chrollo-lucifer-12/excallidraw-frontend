@@ -10,6 +10,9 @@ export class Rect implements IShape {
     public endY: number,
     public strokeStyle: string,
     public lineWidth: number,
+    public fill: string,
+    public opacity: number,
+    public borderRadius: number,
   ) {}
 
   isInside(x: number, y: number) {
@@ -21,21 +24,19 @@ export class Rect implements IShape {
   }
 
   draw(ctx: CanvasRenderingContext2D) {
-    const cx = (this.startX + this.endX) / 2;
-    const cy = (this.startY + this.endY) / 2;
-
     ctx.save();
 
-    ctx.translate(cx, cy);
-    ctx.rotate(this.rotation);
-    ctx.translate(-cx, -cy);
+    ctx.globalAlpha = this.opacity;
+    ctx.fillStyle = this.fill;
     ctx.strokeStyle = this.strokeStyle;
     ctx.lineWidth = this.lineWidth;
-    ctx.strokeRect(
-      this.startX,
-      this.startY,
-      this.endX - this.startX,
-      this.endY - this.startY,
-    );
+
+    const w = this.endX - this.startX;
+    const h = this.endY - this.startY;
+
+    ctx.fillRect(this.startX, this.startY, w, h);
+    ctx.strokeRect(this.startX, this.startY, w, h);
+
+    ctx.restore();
   }
 }

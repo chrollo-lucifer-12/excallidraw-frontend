@@ -10,6 +10,9 @@ export class Ellipse implements IShape {
     public endY: number,
     public strokeStyle: string,
     public lineWidth: number,
+    public fill: string,
+    public opacity: number,
+    public borderRadius: number,
   ) {}
 
   isInside(x: number, y: number) {
@@ -21,23 +24,27 @@ export class Ellipse implements IShape {
   }
 
   draw(ctx: CanvasRenderingContext2D) {
-    const cx1 = (this.startX + this.endX) / 2;
-    const cy1 = (this.startY + this.endY) / 2;
-
     ctx.save();
-
-    ctx.translate(cx1, cy1);
-    ctx.rotate(this.rotation);
-    ctx.translate(-cx1, -cy1);
 
     const rx = (this.endX - this.startX) / 2;
     const ry = (this.endY - this.startY) / 2;
     const cx = this.startX + rx;
     const cy = this.startY + ry;
+
+    ctx.globalAlpha = this.opacity;
     ctx.strokeStyle = this.strokeStyle;
     ctx.lineWidth = this.lineWidth;
+
     ctx.beginPath();
-    ctx.ellipse(cx, cy, Math.abs(rx), Math.abs(ry), 0, 0, 2 * Math.PI);
+    ctx.ellipse(cx, cy, Math.abs(rx), Math.abs(ry), 0, 0, Math.PI * 2);
+
+    if (this.fill) {
+      ctx.fillStyle = this.fill;
+      ctx.fill();
+    }
+
     ctx.stroke();
+
+    ctx.restore();
   }
 }
