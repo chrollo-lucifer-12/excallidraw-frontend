@@ -72,6 +72,8 @@ export class CanvasDrawer {
   private awsIcon: string | null = null;
   private readonly handleSize = 8; // px
   private readonly handleColor = "#3b82f6";
+  private redrawQueued = false;
+  private previewShape: IShape | null = null;
   private resizing: {
     shape: IShape;
     corner: string;
@@ -112,6 +114,17 @@ export class CanvasDrawer {
     this.canvas.addEventListener("wheel", this.handleWheel, { passive: false });
     window.addEventListener("resize", this.handleResize);
     window.addEventListener("keydown", this.handleKeyDown);
+  }
+
+  private queueDraw() {
+    if (this.redrawQueued) return;
+
+    this.redrawQueued = true;
+
+    requestAnimationFrame(() => {
+      this.drawShapes();
+      this.redrawQueued = false;
+    });
   }
 
   insertShape(shape: IShape) {
@@ -350,7 +363,7 @@ export class CanvasDrawer {
 
     this.shapes.push(shape);
     this.setSelectShape(shape);
-    this.drawShapes();
+    this.queueDraw();
     this.saveShapes();
   }
 
@@ -545,7 +558,7 @@ export class CanvasDrawer {
     this.tree?.clear();
     this.shapes.forEach((s) => this.insertShape(s));
 
-    this.drawShapes();
+    this.queueDraw();
   }
 
   public undo() {
@@ -573,41 +586,41 @@ export class CanvasDrawer {
     if (this.selectShape) {
       this.selectShape.lineWidth = w;
       this.saveShapes();
-      this.drawShapes();
+      this.queueDraw();
     }
   }
   public setStrokeStyle(color: string) {
     if (this.selectShape) {
       this.selectShape.strokeStyle = color;
       this.saveShapes();
-      this.drawShapes();
+      this.queueDraw();
     }
   }
   public setfill(color: string) {
     if (this.selectShape) {
       this.selectShape.fill = color;
       this.saveShapes();
-      this.drawShapes();
+      this.queueDraw();
     }
   }
   public setOpacity(opacity: number) {
     if (this.selectShape) {
       this.selectShape.opacity = opacity;
       this.saveShapes();
-      this.drawShapes();
+      this.queueDraw();
     }
   }
   public setBorderRadius(radius: number) {
     if (this.selectShape) {
       this.selectShape.borderRadius = radius;
       this.saveShapes();
-      this.drawShapes();
+      this.queueDraw();
     }
   }
   public setZoom(x: number, y: number) {
     this.zoomX = x;
     this.zoomY = y;
-    this.drawShapes();
+    this.queueDraw();
   }
   public setStyles(strokeStyle: string, lineWidth: number) {
     this.strokeStyle = strokeStyle;
@@ -854,7 +867,7 @@ export class CanvasDrawer {
       if (!foundShape) {
         this.setSelectShape(null);
         this.selectedTextBox = null;
-        this.drawShapes();
+        this.queueDraw();
       }
     }
 
@@ -937,7 +950,7 @@ export class CanvasDrawer {
       this.setSelectShape(textBox);
       this.snapshot();
       this.saveShapes();
-      this.drawShapes();
+      this.queueDraw();
       return;
     }
 
@@ -964,6 +977,8 @@ export class CanvasDrawer {
     const rect = this.canvas.getBoundingClientRect();
     const endX = (e.clientX - rect.left - this.panX) / this.zoomX;
     const endY = (e.clientY - rect.top - this.panY) / this.zoomY;
+    this.previewShape = null;
+
     if (this.draggingShape) {
       this.snapshot();
       this.draggingShape = null;
@@ -1027,7 +1042,7 @@ export class CanvasDrawer {
 
     this.clicked = false;
     this.currentFreeDraw = null;
-    this.drawShapes();
+    this.queueDraw();
   }
 
   private handleMouseMove(e: MouseEvent) {
@@ -1096,7 +1111,7 @@ export class CanvasDrawer {
       const angle = Math.atan2(y - centerY, x - centerX);
       (shape as any).rotation = initialRotation + (angle - startAngle);
       this.updateShapeInTree(shape);
-      this.drawShapes();
+      this.queueDraw();
       return;
     }
 
@@ -1137,14 +1152,14 @@ export class CanvasDrawer {
           break;
       }
       this.updateShapeInTree(shape);
-      this.drawShapes();
+      this.queueDraw();
       return;
     }
 
     if (this.isPanning) {
       this.panX = e.clientX - this.panStartX;
       this.panY = e.clientY - this.panStartY;
-      this.drawShapes();
+      this.queueDraw();
       return;
     }
 
@@ -1167,22 +1182,17 @@ export class CanvasDrawer {
       this.dragOffsetX = x;
       this.dragOffsetY = y;
       this.updateShapeInTree(this.draggingShape);
-      this.drawShapes();
+      this.queueDraw();
       return;
     }
 
     if (this.currentMode === "freedraw" && this.currentFreeDraw) {
       this.currentFreeDraw.addPoint({ x, y });
-      this.drawShapes();
+      this.queueDraw();
       return;
     }
 
     if (this.currentMode !== "none" && this.currentMode !== "eraser") {
-      this.drawShapes();
-      this.ctx.save();
-      this.ctx.translate(this.panX, this.panY);
-      this.ctx.scale(this.zoomX, this.zoomY);
-
       const previewShape = new this.currentShapeClass(
         this.startX,
         this.startY,
@@ -1194,8 +1204,9 @@ export class CanvasDrawer {
         this.opacity,
         this.borderRadius,
       );
-      previewShape.draw(this.ctx);
-      this.ctx.restore();
+
+      this.previewShape = previewShape;
+      this.queueDraw();
       return;
     }
 
@@ -1223,7 +1234,7 @@ export class CanvasDrawer {
         this.snapshot();
         this.saveShapes();
       }
-      this.drawShapes();
+      this.queueDraw();
     }
   }
 
@@ -1240,15 +1251,20 @@ export class CanvasDrawer {
 
     ctx.restore();
   }
-
   public drawShapes() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.ctx.save();
     this.ctx.translate(this.panX, this.panY);
     this.ctx.scale(this.zoomX, this.zoomY);
+
     for (const shape of this.shapes) {
       shape.draw(this.ctx);
     }
+
+    if (this.previewShape) {
+      this.previewShape.draw(this.ctx);
+    }
+
     if (this.selectShape) {
       this.drawSelectionBox(this.selectShape);
       this.drawResizeHandles(this.selectShape);
@@ -1444,12 +1460,12 @@ export class CanvasDrawer {
       console.log(err);
     }
 
-    this.drawShapes();
+    this.queueDraw();
   }
   public resizeCanvas() {
     this.canvas.width = this.canvas.offsetWidth || window.innerWidth;
     this.canvas.height = this.canvas.offsetHeight || window.innerHeight;
-    this.drawShapes();
+    this.queueDraw();
   }
   private handleResize() {
     this.resizeCanvas();
@@ -1489,7 +1505,7 @@ export class CanvasDrawer {
       this.zoomY *= zoomFactor;
       this.panX -= centerX * (zoomFactor - 1);
       this.panY -= centerY * (zoomFactor - 1);
-      this.drawShapes();
+      this.queueDraw();
       return;
     }
     if (e.key === "-") {
@@ -1500,7 +1516,7 @@ export class CanvasDrawer {
       this.zoomY *= zoomFactor;
       this.panX -= centerX * (zoomFactor - 1);
       this.panY -= centerY * (zoomFactor - 1);
-      this.drawShapes();
+      this.queueDraw();
       return;
     }
     if (!this.selectedTextBox) return;
@@ -1509,7 +1525,7 @@ export class CanvasDrawer {
     } else if (e.key.length === 1) {
       this.selectedTextBox.addChar(e.key);
     }
-    this.drawShapes();
+    this.queueDraw();
     this.snapshot();
     this.saveShapes();
   }
@@ -1535,7 +1551,7 @@ export class CanvasDrawer {
     this.panX = mouseX - worldX * this.zoomX;
     this.panY = mouseY - worldY * this.zoomY;
 
-    this.drawShapes();
+    this.queueDraw();
   }
 
   destroy() {
