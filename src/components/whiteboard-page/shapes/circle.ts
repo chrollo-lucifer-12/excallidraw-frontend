@@ -2,6 +2,7 @@ import { IShape, ShapeMode } from "../draw";
 
 export class Circle implements IShape {
   type: ShapeMode = "circle";
+  rotation: number = 0;
   constructor(
     public startX: number,
     public startY: number,
@@ -21,6 +22,14 @@ export class Circle implements IShape {
   }
 
   draw(ctx: CanvasRenderingContext2D) {
+    const cx = (this.startX + this.endX) / 2;
+    const cy = (this.startY + this.endY) / 2;
+
+    ctx.save();
+
+    ctx.translate(cx, cy);
+    ctx.rotate(this.rotation);
+    ctx.translate(-cx, -cy);
     const radius = Math.sqrt(
       (this.endX - this.startX) ** 2 + (this.endY - this.startY) ** 2,
     );

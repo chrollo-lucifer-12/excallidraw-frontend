@@ -3,6 +3,7 @@ import { IShape, ShapeMode } from "../draw";
 export class Polygon implements IShape {
   type: ShapeMode;
   sides: number;
+  rotation: number = 0;
 
   constructor(
     sides: number,
@@ -26,6 +27,14 @@ export class Polygon implements IShape {
   }
 
   draw(ctx: CanvasRenderingContext2D) {
+    const cx = (this.startX + this.endX) / 2;
+    const cy = (this.startY + this.endY) / 2;
+
+    ctx.save();
+
+    ctx.translate(cx, cy);
+    ctx.rotate(this.rotation);
+    ctx.translate(-cx, -cy);
     const radius = Math.sqrt(
       (this.endX - this.startX) ** 2 + (this.endY - this.startY) ** 2,
     );

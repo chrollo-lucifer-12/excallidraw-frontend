@@ -2,6 +2,7 @@ import { IShape, ShapeMode } from "../draw";
 
 export class Ellipse implements IShape {
   type: ShapeMode = "ellipse";
+  rotation: number = 0;
   constructor(
     public startX: number,
     public startY: number,
@@ -20,6 +21,15 @@ export class Ellipse implements IShape {
   }
 
   draw(ctx: CanvasRenderingContext2D) {
+    const cx1 = (this.startX + this.endX) / 2;
+    const cy1 = (this.startY + this.endY) / 2;
+
+    ctx.save();
+
+    ctx.translate(cx1, cy1);
+    ctx.rotate(this.rotation);
+    ctx.translate(-cx1, -cy1);
+
     const rx = (this.endX - this.startX) / 2;
     const ry = (this.endY - this.startY) / 2;
     const cx = this.startX + rx;

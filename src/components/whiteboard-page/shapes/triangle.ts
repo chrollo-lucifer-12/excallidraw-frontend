@@ -2,6 +2,7 @@ import { IShape, ShapeMode } from "../draw";
 
 export class Triangle implements IShape {
   type: ShapeMode = "triangle";
+  rotation: number = 0;
 
   constructor(
     public startX: number,
@@ -45,6 +46,14 @@ export class Triangle implements IShape {
   }
 
   draw(ctx: CanvasRenderingContext2D) {
+    const cx = (this.startX + this.endX) / 2;
+    const cy = (this.startY + this.endY) / 2;
+
+    ctx.save();
+
+    ctx.translate(cx, cy);
+    ctx.rotate(this.rotation);
+    ctx.translate(-cx, -cy);
     ctx.strokeStyle = this.strokeStyle;
     ctx.lineWidth = this.lineWidth;
     const topX = this.startX;

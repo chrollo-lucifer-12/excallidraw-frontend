@@ -10,7 +10,6 @@ import { Triangle } from "./shapes/triangle";
 import { Parallelogram } from "./shapes/parallelogram";
 import { Icon } from "./shapes/icons";
 import { Code } from "./shapes/code";
-import { prisma } from "@/lib/prisma";
 
 export interface IShape {
   type: ShapeMode;
@@ -93,6 +92,13 @@ export class CanvasDrawer {
     startX: number;
     startY: number;
     orig: any;
+  } | null = null;
+  private rotating: {
+    shape: IShape;
+    centerX: number;
+    centerY: number;
+    startAngle: number;
+    initialRotation: number;
   } | null = null;
 
   constructor(public canvas: HTMLCanvasElement) {
@@ -243,6 +249,36 @@ export class CanvasDrawer {
     }
   }
 
+  private drawRotationHandle(shape: IShape) {
+    if (!("startX" in shape)) return;
+
+    const s = shape as any;
+    const ctx = this.ctx;
+
+    const minX = Math.min(s.startX, s.endX);
+    const minY = Math.min(s.startY, s.endY);
+    const maxX = Math.max(s.startX, s.endX);
+
+    const cx = (s.startX + s.endX) / 2;
+    const handleY = minY - 30 / this.zoomX;
+
+    ctx.save();
+    ctx.fillStyle = "#3b82f6";
+    ctx.strokeStyle = "#3b82f6";
+    ctx.lineWidth = 1 / this.zoomX;
+
+    ctx.beginPath();
+    ctx.moveTo(cx, minY);
+    ctx.lineTo(cx, handleY);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(cx, handleY, 6 / this.zoomX, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
   private drawSelectionBox(shape: IShape) {
     const ctx = this.ctx;
 
@@ -331,6 +367,37 @@ export class CanvasDrawer {
       this.panStartY = e.clientY - this.panY;
       return;
     }
+    if (this.selectShape && "startX" in this.selectShape) {
+      const s = this.selectShape as any;
+
+      const cx = (s.startX + s.endX) / 2;
+      const minY = Math.min(s.startY, s.endY);
+      const handleY = minY - 30 / this.zoomX;
+      const r = 6 / this.zoomX;
+
+      const dx = x - cx;
+      const dy = y - handleY;
+
+      if (dx * dx + dy * dy <= r * r) {
+        const centerX = cx;
+        const centerY = (s.startY + s.endY) / 2;
+
+        this.rotating = {
+          shape: this.selectShape,
+          centerX,
+          centerY,
+          startAngle: Math.atan2(y - centerY, x - centerX),
+          initialRotation: s.rotation || 0,
+        };
+
+        this.draggingShape = null;
+        this.resizing = null;
+        this.clicked = true;
+        this.canvas.style.cursor = "grabbing";
+        return;
+      }
+    }
+
     if (this.selectShape) {
       const handles = this.getSelectionHandles(this.selectShape);
       for (const h of handles) {
@@ -408,6 +475,14 @@ export class CanvasDrawer {
     const rect = this.canvas.getBoundingClientRect();
     const endX = (e.clientX - rect.left - this.panX) / this.zoomX;
     const endY = (e.clientY - rect.top - this.panY) / this.zoomY;
+    if (this.rotating) {
+      this.rotating = null;
+      this.clicked = false;
+      this.saveShapes();
+      this.canvas.style.cursor = "pointer";
+      return;
+    }
+
     if (this.resizing) {
       this.resizing = null;
       this.saveShapes();
@@ -442,6 +517,17 @@ export class CanvasDrawer {
     const rect = this.canvas.getBoundingClientRect();
     const rawX = (e.clientX - rect.left - this.panX) / this.zoomX;
     const rawY = (e.clientY - rect.top - this.panY) / this.zoomY;
+    if (this.rotating) {
+      const { shape, centerX, centerY, startAngle, initialRotation } =
+        this.rotating;
+
+      const angle = Math.atan2(rawY - centerY, rawX - centerX);
+      (shape as any).rotation = initialRotation + (angle - startAngle);
+
+      this.drawShapes();
+      return;
+    }
+
     if (this.resizing) {
       const { shape, corner, startX, startY, orig } = this.resizing;
       const dx = rawX - startX;
@@ -589,6 +675,7 @@ export class CanvasDrawer {
     if (this.selectShape) {
       this.drawSelectionBox(this.selectShape);
       this.drawResizeHandles(this.selectShape);
+      this.drawRotationHandle(this.selectShape);
     }
     this.ctx.restore();
   }

@@ -2,6 +2,7 @@ import { IShape, ShapeMode } from "../draw";
 
 export class Parallelogram implements IShape {
   type: ShapeMode = "parallelogram";
+  rotation: number = 0;
   constructor(
     public startX: number,
     public startY: number,
@@ -20,6 +21,15 @@ export class Parallelogram implements IShape {
   }
 
   draw(ctx: CanvasRenderingContext2D) {
+    const cx = (this.startX + this.endX) / 2;
+    const cy = (this.startY + this.endY) / 2;
+
+    ctx.save();
+
+    ctx.translate(cx, cy);
+    ctx.rotate(this.rotation);
+    ctx.translate(-cx, -cy);
+
     ctx.strokeStyle = this.strokeStyle;
     ctx.lineWidth = this.lineWidth;
 

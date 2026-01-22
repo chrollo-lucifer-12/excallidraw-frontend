@@ -2,6 +2,7 @@ import { IShape, ShapeMode } from "../draw";
 
 export class Rect implements IShape {
   type: ShapeMode = "rect";
+  rotation: number = 0;
   constructor(
     public startX: number,
     public startY: number,
@@ -20,6 +21,14 @@ export class Rect implements IShape {
   }
 
   draw(ctx: CanvasRenderingContext2D) {
+    const cx = (this.startX + this.endX) / 2;
+    const cy = (this.startY + this.endY) / 2;
+
+    ctx.save();
+
+    ctx.translate(cx, cy);
+    ctx.rotate(this.rotation);
+    ctx.translate(-cx, -cy);
     ctx.strokeStyle = this.strokeStyle;
     ctx.lineWidth = this.lineWidth;
     ctx.strokeRect(
