@@ -11,7 +11,6 @@ const WhiteboardPage = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawerRef = useRef<CanvasDrawer | null>(null);
   const minimapRef = useRef<HTMLCanvasElement>(null);
-  const [selectedShape, setSelectedShape] = useState<IShape | null>(null);
 
   const [drawerReady, setDrawerReady] = useState<CanvasDrawer | null>(null);
 
@@ -62,16 +61,6 @@ const WhiteboardPage = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (!drawerReady) return;
-
-    drawerReady.onSelectShapeChanged = setSelectedShape;
-
-    return () => {
-      drawerReady.onSelectShapeChanged = undefined;
-    };
-  }, [drawerReady]);
-
   return (
     <div className="relative m-0 p-0">
       <div className="absolute bottom-4 right-4 border border-gray-300 z-2  rounded-md bg-white/90">
@@ -79,10 +68,7 @@ const WhiteboardPage = () => {
       </div>
 
       <div className="absolute top-4 left-4 z-50">
-        <StyleSelector
-          canvasObject={drawerReady!}
-          selectedShape={selectedShape}
-        />
+        <StyleSelector canvasObject={drawerReady!} />
       </div>
 
       <div className="fixed left-1/2 bottom-4 -translate-x-1/2 z-50">

@@ -21,7 +21,8 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "../ui/button";
 import Image from "next/image";
-import { ShapeMode } from "@/lib/types";
+import { IShape, ShapeMode } from "@/lib/types";
+import { useEffect, useState } from "react";
 
 const shapeItems = [
   { title: "Eraser", icon: Eraser, name: "eraser" },
@@ -59,6 +60,17 @@ interface Props {
 }
 
 const ModeSelector = ({ canvasObject }: Props) => {
+  const [selectedShape, setSelectedShape] = useState<string>("");
+  useEffect(() => {
+    if (!canvasObject) return;
+
+    canvasObject.onCurrentModeChanged = setSelectedShape;
+
+    return () => {
+      canvasObject.onCurrentModeChanged = undefined;
+    };
+  }, [canvasObject]);
+
   return (
     <Card className="p-2">
       <div className="space-y-2">
@@ -66,7 +78,7 @@ const ModeSelector = ({ canvasObject }: Props) => {
           {shapeItems.map((item) => (
             <button
               key={item.name}
-              className="flex items-center justify-center gap-2 rounded p-2 hover:bg-gray-100"
+              className={`flex items-center justify-center gap-2 rounded p-2 hover:bg-gray-100 ${selectedShape === item.name ? "border border-blue-500" : ""}`}
               onClick={() => canvasObject?.setMode(item.name as ShapeMode)}
             >
               <item.icon className="w-4 h-4" />

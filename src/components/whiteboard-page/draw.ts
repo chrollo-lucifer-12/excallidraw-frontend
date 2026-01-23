@@ -52,7 +52,7 @@ export class CanvasDrawer {
   private dragOffsetX = 0;
   private dragOffsetY = 0;
   private ctx: CanvasRenderingContext2D;
-  public strokeStyle: string = "black";
+  public strokeStyle: string = "#000000";
   public lineWidth: number = 3;
   public fill: string = "black";
   public opacity: number = 0.3;
@@ -68,7 +68,11 @@ export class CanvasDrawer {
   public zoomX = 1;
   public zoomY = 1;
   public selectShape: IShape | null = null;
-  public onSelectShapeChanged?: (shape: IShape | null) => void;
+  public onStrokeChanged?: (s: string) => void;
+  public onFillChanged?: (s: string) => void;
+  public onWidthChanged?: (w: number) => void;
+  public onOpacityChanged?: (o: number) => void;
+  public onCurrentModeChanged?: (shape: ShapeMode) => void;
   private awsIcon: string | null = null;
   private readonly handleSize = 8; // px
   private readonly handleColor = "#3b82f6";
@@ -621,15 +625,15 @@ export class CanvasDrawer {
   }
   public setSelectShape(shape: IShape | null) {
     this.selectShape = shape;
-    if (this.onSelectShapeChanged) {
-      this.onSelectShapeChanged(shape);
-    }
   }
   public setLineWidth(w: number) {
     if (this.selectShape) {
       this.selectShape.lineWidth = w;
       this.saveShapes();
       this.queueDraw();
+    }
+    if (this.onWidthChanged) {
+      this.onWidthChanged(w);
     }
     this.lineWidth = w;
   }
@@ -639,6 +643,9 @@ export class CanvasDrawer {
       this.saveShapes();
       this.queueDraw();
     }
+    if (this.onStrokeChanged) {
+      this.onStrokeChanged(color);
+    }
     this.strokeStyle = color;
   }
   public setfill(color: string) {
@@ -647,6 +654,9 @@ export class CanvasDrawer {
       this.saveShapes();
       this.queueDraw();
     }
+    if (this.onFillChanged) {
+      this.onFillChanged(color);
+    }
     this.fill = color;
   }
   public setOpacity(opacity: number) {
@@ -654,6 +664,9 @@ export class CanvasDrawer {
       this.selectShape.opacity = opacity;
       this.saveShapes();
       this.queueDraw();
+    }
+    if (this.onOpacityChanged) {
+      this.onOpacityChanged(opacity);
     }
     this.opacity = opacity;
   }
@@ -674,7 +687,6 @@ export class CanvasDrawer {
     this.lineWidth = lineWidth;
   }
   public setMode(mode: ShapeMode) {
-    console.log(mode);
     this.currentMode = mode;
     this.shapesToEraser = [];
     this.setSelectShape(null);
@@ -758,6 +770,7 @@ export class CanvasDrawer {
         this.currentShapeClass = NullShape;
         break;
     }
+    if (this.onCurrentModeChanged) this.onCurrentModeChanged(mode);
   }
 
   private drawRotationHandle(shape: IShape) {

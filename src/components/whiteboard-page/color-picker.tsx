@@ -4,10 +4,12 @@ const ColorPicker = ({
   title,
   onChangeColor,
   defaultColors,
+  defaultValue,
 }: {
   title: string;
   onChangeColor: (c: string) => void;
   defaultColors: { name: string; hex: string; class: string }[];
+  defaultValue: string;
 }) => {
   return (
     <div className="w-full flex flex-col ">
@@ -16,7 +18,7 @@ const ColorPicker = ({
         {defaultColors.map((color, index) => (
           <Button
             key={index}
-            className={`${color.class} h-6 w-6 rounded hover:${color.class}`}
+            className={`${color.class} h-6 w-6 rounded hover:${color.class} ${color.hex === defaultValue ? "border border-blue-500" : ""}`}
             size="sm"
             onClick={() => {
               onChangeColor(color.hex);

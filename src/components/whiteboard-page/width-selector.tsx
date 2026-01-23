@@ -2,8 +2,10 @@ import { useState } from "react";
 
 const WidthSelector = ({
   onWidthChange,
+  width,
 }: {
   onWidthChange: (w: number) => void;
+  width: number;
 }) => {
   const [active, setActive] = useState<number>(1);
 

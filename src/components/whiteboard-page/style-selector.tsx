@@ -6,15 +6,29 @@ import ColorPicker from "./color-picker";
 import { fillColors, strokeColors } from "@/lib/utils";
 import WidthSelector from "./width-selector";
 import OpacitySelector from "./opacity-selector";
-import ZoomControls from "./zoom-controls";
+import { useEffect, useState } from "react";
 
-const StyleSelector = ({
-  canvasObject,
-  selectedShape,
-}: {
-  canvasObject: CanvasDrawer;
-  selectedShape: IShape | null;
-}) => {
+const StyleSelector = ({ canvasObject }: { canvasObject: CanvasDrawer }) => {
+  const [stroke, setStroke] = useState<string>("");
+  const [fill, setFill] = useState<string>("");
+  const [width, setWidth] = useState<number>(1);
+  const [opacity, setOpacity] = useState<number>(1);
+  useEffect(() => {
+    if (!canvasObject) return;
+
+    canvasObject.onStrokeChanged = setStroke;
+    canvasObject.onFillChanged = setFill;
+    canvasObject.onWidthChanged = setWidth;
+    canvasObject.onOpacityChanged = setOpacity;
+
+    return () => {
+      canvasObject.onStrokeChanged = undefined;
+      canvasObject.onFillChanged = undefined;
+      canvasObject.onWidthChanged = undefined;
+      canvasObject.onOpacityChanged = undefined;
+    };
+  }, [canvasObject]);
+
   const handleStrokeStyle = (color: string) => {
     canvasObject.setStrokeStyle(color);
     canvasObject.saveShapes();
@@ -22,21 +36,18 @@ const StyleSelector = ({
   };
 
   const handleFillColor = (color: string) => {
-    if (selectedShape) selectedShape.fill = color;
     canvasObject.setfill(color);
     canvasObject.saveShapes();
     canvasObject.drawShapes();
   };
 
   const handleOpacity = (opacity: number) => {
-    if (selectedShape) selectedShape.opacity = opacity;
     canvasObject.setOpacity(opacity);
     canvasObject.saveShapes();
     canvasObject.drawShapes();
   };
 
   const handleLineWidth = (width: number) => {
-    if (selectedShape) selectedShape.lineWidth = width;
     canvasObject.setLineWidth(width);
     canvasObject.saveShapes();
     canvasObject.drawShapes();
@@ -49,14 +60,16 @@ const StyleSelector = ({
           title="Stroke"
           onChangeColor={handleStrokeStyle}
           defaultColors={strokeColors}
+          defaultValue={stroke}
         />
         <ColorPicker
           title="Fill"
           onChangeColor={handleFillColor}
           defaultColors={fillColors}
+          defaultValue={fill}
         />
-        <WidthSelector onWidthChange={handleLineWidth} />
-        <OpacitySelector onOpacityChange={handleOpacity} />
+        <WidthSelector onWidthChange={handleLineWidth} width={width} />
+        <OpacitySelector onOpacityChange={handleOpacity} opacity={opacity} />
         {/*<ZoomControls />*/}
       </CardContent>
     </Card>
