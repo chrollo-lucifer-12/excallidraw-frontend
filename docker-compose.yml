@@ -1,0 +1,83 @@
+services:
+  nextjs-app:
+    env_file:
+      - .env
+    container_name: nextjs-app
+    build:
+      context: .
+      target: dev
+    profiles: ["dev"]
+    volumes:
+      - type: bind
+        source: .
+        target: /app
+      - type: volume
+        source: node_modules
+        target: /app/node_modules
+    command: yarn dev
+    restart: unless-stopped
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    develop:
+      watch:
+        - action: sync
+          path: .
+          target: /app
+          ignore:
+            - .git/
+            - node_modules/
+            - .next/
+        - action: rebuild
+          path: package.json
+        - action: rebuild
+          path: yarn.lock
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres-db
+    profiles: ["dev", "prod"]
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app_db
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  nextjs-prod:
+    env_file:
+      - .env
+    container_name: nextjs-prod
+    build:
+      context: .
+      target: prod
+    profiles: ["prod"]
+    command: yarn start
+    restart: always
+
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  postgres_data:
+  node_modules:

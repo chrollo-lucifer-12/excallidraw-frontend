@@ -46,7 +46,7 @@ const CreateWhiteboard = () => {
           </DialogDescription>
         </DialogHeader>
         {error && <p className="text-red-500 mb-2">{error}</p>}
-        <form action={formAction}>
+        <form action={formAction} className="flex  gap-1">
           <Input placeholder="Whiteboard name" name="name" />
           <Button type="submit" disabled={isPending}>
             {isPending ? "Creating..." : "Create"}

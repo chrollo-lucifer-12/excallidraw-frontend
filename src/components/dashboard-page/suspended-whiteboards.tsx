@@ -5,7 +5,6 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 const getWhiteboards = async (userId: string) => {
-  "use cache";
   const whiteboards = await prisma.whiteBoard.findMany({
     where: {
       userId,

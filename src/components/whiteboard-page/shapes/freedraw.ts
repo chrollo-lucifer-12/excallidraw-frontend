@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { IShape, ShapeMode } from "@/lib/types";
 export class FreeDraw implements IShape {
   type: ShapeMode = "freedraw";

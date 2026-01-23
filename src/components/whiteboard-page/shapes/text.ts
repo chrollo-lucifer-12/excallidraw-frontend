@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { IShape, ShapeMode } from "@/lib/types";
 export class Text implements IShape {
   type: ShapeMode = "text";

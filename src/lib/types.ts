@@ -1,7 +1,7 @@
 export type Whiteboard = {
   name: string;
   slug: string;
-  image: string;
+  image: string | null;
 };
 
 export type SpatialItem = {

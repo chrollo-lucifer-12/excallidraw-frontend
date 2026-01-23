@@ -1,9 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { CanvasDrawer } from "./draw";
-import { AppSidebar } from "./app-sidebar";
-import { Button } from "../ui/button";
-import { IShape } from "@/lib/types";
+
 import StyleSelector from "./style-selector";
 import ModeSelector from "./mode-selector";
 

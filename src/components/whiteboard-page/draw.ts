@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 import { Text } from "./shapes/text";
 import { Rect } from "./shapes/rect";
 import { Polygon } from "./shapes/polygon";

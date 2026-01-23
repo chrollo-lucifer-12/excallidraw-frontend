@@ -18,7 +18,7 @@ const WhiteboardsDisplay = ({ whiteboards }: { whiteboards: Whiteboard[] }) => {
           }}
         >
           <div className="relative aspect-video w-full">
-            <div className="absolute inset-0 z-30 bg-black/35" />
+            <div className="absolute inset-0  bg-black/35" />
             <Image
               src={
                 w.image ||
