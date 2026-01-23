@@ -92,6 +92,9 @@ export class CanvasDrawer {
   private historyIndex: number = -1;
   private readonly MAX_HISTORY = 100;
   private clipboard: IShape | null = null;
+  private lastSaveTime = 0;
+  private SAVE_INTERVAL = 8000;
+  private isSaving = false;
 
   constructor(public canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext("2d");
@@ -367,18 +370,58 @@ export class CanvasDrawer {
     this.saveShapes();
   }
 
-  public download() {
-    let imageDataUrl = this.canvas.toDataURL("image/png");
-    // upload to s3
-    let imageUrl = "";
-    // prisma.whiteBoard.update({
-    //   where: {
-    //     slug: this.getSlug(),
-    //   },
-    //   data: {
-    //     image: imageUrl,
-    //   },
-    // });
+  public async saveCanvasImage() {
+    const now = Date.now();
+
+    if (now - this.lastSaveTime < this.SAVE_INTERVAL || this.isSaving) {
+      return;
+    }
+    this.isSaving = true;
+    this.lastSaveTime = now;
+    const srcCanvas = this.canvas;
+
+    const exportCanvas = document.createElement("canvas");
+    exportCanvas.width = srcCanvas.width;
+    exportCanvas.height = srcCanvas.height;
+
+    const exportCtx = exportCanvas.getContext("2d");
+    if (!exportCtx) return;
+
+    exportCtx.fillStyle = "#ffffff";
+    exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+    exportCtx.drawImage(srcCanvas, 0, 0);
+
+    try {
+      const blob: Blob | null = await new Promise((resolve) =>
+        exportCanvas.toBlob(resolve, "image/webp", 0.95),
+      );
+
+      if (!blob) return;
+
+      const formData = new FormData();
+      formData.append("file", blob, "whiteboard.webp");
+      formData.append("slug", this.getSlug());
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        console.error("Upload failed");
+        return;
+      }
+
+      const data = await res.json();
+      console.log("Whiteboard saved:", data.url);
+
+      return data.url;
+    } catch (err) {
+      console.log(err);
+    } finally {
+      this.isSaving = false;
+    }
   }
 
   private snapshot() {
@@ -1297,6 +1340,8 @@ export class CanvasDrawer {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(serializable),
     });
+
+    this.saveCanvasImage();
   }
   private async loadShapes() {
     const slug = this.getSlug();

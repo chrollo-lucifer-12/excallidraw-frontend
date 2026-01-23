@@ -14,7 +14,7 @@ const Page = async () => {
     redirect("/auth/sign-in");
   }
 
-  const userId = session.user.userId;
+  const userId = session.user.id;
 
   const whiteboards = await prisma.whiteBoard.findMany({
     where: {
