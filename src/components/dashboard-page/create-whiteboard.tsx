@@ -15,14 +15,7 @@ import { Input } from "../ui/input";
 import { useState, useTransition } from "react";
 import { createWhiteBoard } from "@/app/(protected)/_actions/create-whiteboard";
 
-const CreateWhiteboard = ({
-  updateWhiteBoards,
-}: {
-  updateWhiteBoards: (action: {
-    type: "add" | "replace" | "remove";
-    payload: any;
-  }) => void;
-}) => {
+const CreateWhiteboard = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -31,27 +24,7 @@ const CreateWhiteboard = ({
     const tempId = crypto.randomUUID();
 
     startTransition(async () => {
-      updateWhiteBoards({
-        type: "add",
-        payload: {
-          name: formData.get("name"),
-          slug: "",
-          image: "",
-          tempId,
-        },
-      });
-
       const created = await createWhiteBoard(formData);
-
-      if (!created?.success) {
-        updateWhiteBoards({ type: "remove", payload: { tempId } });
-        return;
-      }
-
-      updateWhiteBoards({
-        type: "replace",
-        payload: { ...created, tempId },
-      });
 
       setIsOpen(false);
     });
@@ -61,7 +34,7 @@ const CreateWhiteboard = ({
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button size="lg">
-          <Plus className="mr-2 h-5 w-5" />
+          <Plus className=" h-5 w-5" />
           Create Whiteboard
         </Button>
       </DialogTrigger>
