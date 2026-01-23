@@ -65,8 +65,8 @@ export class CanvasDrawer {
   private panStartX = 0;
   private panStartY = 0;
   private isPanning: boolean = false;
-  private zoomX = 1;
-  private zoomY = 1;
+  public zoomX = 1;
+  public zoomY = 1;
   public selectShape: IShape | null = null;
   public onSelectShapeChanged?: (shape: IShape | null) => void;
   private awsIcon: string | null = null;
@@ -631,6 +631,7 @@ export class CanvasDrawer {
       this.saveShapes();
       this.queueDraw();
     }
+    this.lineWidth = w;
   }
   public setStrokeStyle(color: string) {
     if (this.selectShape) {
@@ -638,6 +639,7 @@ export class CanvasDrawer {
       this.saveShapes();
       this.queueDraw();
     }
+    this.strokeStyle = color;
   }
   public setfill(color: string) {
     if (this.selectShape) {
@@ -645,6 +647,7 @@ export class CanvasDrawer {
       this.saveShapes();
       this.queueDraw();
     }
+    this.fill = color;
   }
   public setOpacity(opacity: number) {
     if (this.selectShape) {
@@ -652,6 +655,7 @@ export class CanvasDrawer {
       this.saveShapes();
       this.queueDraw();
     }
+    this.opacity = opacity;
   }
   public setBorderRadius(radius: number) {
     if (this.selectShape) {
@@ -670,6 +674,7 @@ export class CanvasDrawer {
     this.lineWidth = lineWidth;
   }
   public setMode(mode: ShapeMode) {
+    console.log(mode);
     this.currentMode = mode;
     this.shapesToEraser = [];
     this.setSelectShape(null);

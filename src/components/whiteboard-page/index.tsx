@@ -4,6 +4,8 @@ import { CanvasDrawer } from "./draw";
 import { AppSidebar } from "./app-sidebar";
 import { Button } from "../ui/button";
 import { IShape } from "@/lib/types";
+import StyleSelector from "./style-selector";
+import ModeSelector from "./mode-selector";
 
 const WhiteboardPage = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -77,8 +79,16 @@ const WhiteboardPage = () => {
       </div>
 
       <div className="absolute top-4 left-4 z-50">
-        <AppSidebar canvasObject={drawerReady!} selectedShape={selectedShape} />
+        <StyleSelector
+          canvasObject={drawerReady!}
+          selectedShape={selectedShape}
+        />
       </div>
+
+      <div className="fixed left-1/2 bottom-4 -translate-x-1/2 z-50">
+        <ModeSelector canvasObject={drawerReady!} />
+      </div>
+
       <canvas ref={canvasRef} className="block w-screen h-screen" />
     </div>
   );
