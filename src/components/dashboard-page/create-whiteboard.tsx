@@ -4,40 +4,58 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "../ui/button";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Plus } from "lucide-react";
-import { Input } from "../ui/input";
-import { useState, useTransition } from "react";
-import { createWhiteBoard } from "@/app/(protected)/_actions/create-whiteboard";
+import { useActionState, useEffect, useState } from "react";
+import { toast } from "sonner";
+
+import {
+  createWhiteBoard,
+  type CreateWhiteboardState,
+} from "@/app/(protected)/_actions/create-whiteboard";
+import { RainbowButton } from "../ui/rainbow-button";
+
+const initialState: CreateWhiteboardState = {
+  success: false,
+};
 
 const CreateWhiteboard = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [error, setError] = useState("");
-  const [isPending, startTransition] = useTransition();
+  const [open, setOpen] = useState(false);
 
-  const formAction = async (formData: FormData) => {
-    const tempId = crypto.randomUUID();
+  const [state, formAction, isPending] = useActionState(
+    createWhiteBoard,
+    initialState,
+  );
 
-    startTransition(async () => {
-      const created = await createWhiteBoard(formData);
+  useEffect(() => {
+    if (!state) return;
 
-      setIsOpen(false);
-    });
-  };
+    if (state.success) {
+      toast.success("Whiteboard created 🎉");
+      setOpen(false);
+    }
+
+    if (state.errors) {
+      Object.values(state.errors).forEach((messages) => {
+        messages.forEach((msg) => toast.error(msg));
+      });
+    }
+  }, [state]);
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="lg">
-          <Plus className=" h-5 w-5" />
+        <RainbowButton size="lg">
+          <Plus className="h-5 w-5" />
           Create Whiteboard
-        </Button>
+        </RainbowButton>
       </DialogTrigger>
+
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Create a new whiteboard</DialogTitle>
@@ -45,9 +63,13 @@ const CreateWhiteboard = () => {
             Enter a name for your new whiteboard.
           </DialogDescription>
         </DialogHeader>
-        {error && <p className="text-red-500 mb-2">{error}</p>}
-        <form action={formAction} className="flex  gap-1">
-          <Input placeholder="Whiteboard name" name="name" />
+
+        <form action={formAction} className="flex gap-2">
+          <Input
+            name="name"
+            placeholder="Whiteboard name"
+            disabled={isPending}
+          />
           <Button type="submit" disabled={isPending}>
             {isPending ? "Creating..." : "Create"}
           </Button>

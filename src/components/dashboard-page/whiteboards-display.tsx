@@ -3,6 +3,13 @@ import { Whiteboard } from "@/lib/types";
 import { Card, CardHeader, CardTitle } from "../ui/card";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { Button } from "../ui/button";
+import { Label } from "../ui/label";
+import { Input } from "../ui/input";
+import { EllipsisVertical } from "lucide-react";
+import EditWhiteboard from "./edit-whiteboard";
+import { ShineBorder } from "../ui/shine-border";
 
 const WhiteboardsDisplay = ({ whiteboards }: { whiteboards: Whiteboard[] }) => {
   const router = useRouter();
@@ -17,6 +24,7 @@ const WhiteboardsDisplay = ({ whiteboards }: { whiteboards: Whiteboard[] }) => {
             router.push(`/whiteboard/${w.slug}`);
           }}
         >
+          <ShineBorder shineColor={["#A07CFE", "#FE8FB5", "#FFBE7B"]} />
           <div className="relative aspect-video w-full">
             <div className="absolute inset-0  bg-black/35" />
             <Image
@@ -29,8 +37,9 @@ const WhiteboardsDisplay = ({ whiteboards }: { whiteboards: Whiteboard[] }) => {
               fill
             />
           </div>
-          <CardHeader>
+          <CardHeader className="flex justify-between items-center ">
             <CardTitle className="relative z-40">{w.name}</CardTitle>
+            <EditWhiteboard name={w.name} slug={w.slug} />
           </CardHeader>
         </Card>
       ))}

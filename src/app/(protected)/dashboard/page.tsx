@@ -1,8 +1,3 @@
-import { auth } from "@/lib/auth";
-
-import { redirect } from "next/navigation";
-import { headers } from "next/headers";
-
 import DashboardHeader from "@/components/dashboard-page/dashboard-header";
 import SuspendedWhiteboards from "@/components/dashboard-page/suspended-whiteboards";
 import { Suspense } from "react";

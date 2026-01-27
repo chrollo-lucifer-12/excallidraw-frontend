@@ -7,43 +7,67 @@ import { whiteBoardSchema } from "@/lib/schemas";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
-export const createWhiteBoard = async (formData: FormData) => {
+export type CreateWhiteboardState = {
+  success: boolean;
+  errors?: Record<string, string[]>;
+};
+
+const MAX_WHITEBOARDS = 5;
+
+export const createWhiteBoard = async (
+  _prevState: CreateWhiteboardState,
+  formData: FormData,
+): Promise<CreateWhiteboardState> => {
   const validatedFields = whiteBoardSchema.safeParse({
     name: formData.get("name"),
   });
 
-  if (validatedFields.error) {
+  if (!validatedFields.success) {
     return {
       success: false,
       errors: validatedFields.error.flatten().fieldErrors,
     };
   }
 
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  if (!session) {
+    return {
+      success: false,
+      errors: { auth: ["User not logged in"] },
+    };
+  }
+
+  // 🔒 ENFORCE LIMIT
+  const count = await prisma.whiteBoard.count({
+    where: { userId: session.user.id },
+  });
+
+  if (count >= MAX_WHITEBOARDS) {
+    return {
+      success: false,
+      errors: {
+        limit: [`You can only create up to ${MAX_WHITEBOARDS} whiteboards`],
+      },
+    };
+  }
+
   try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
-    if (!session) {
-      return { success: false, errors: { auth: ["User not logged in"] } };
-    }
-
-    const slug = secureRandomSlug();
-
-    const whiteboard = await prisma.whiteBoard.create({
+    await prisma.whiteBoard.create({
       data: {
         name: validatedFields.data.name,
-        slug,
+        slug: secureRandomSlug(),
         userId: session.user.id,
       },
     });
 
     revalidatePath("/dashboard");
 
-    return { success: true, data: whiteboard };
+    return { success: true };
   } catch (err) {
-    console.log(err);
-
+    console.error(err);
     return {
       success: false,
       errors: { server: ["Something went wrong"] },
